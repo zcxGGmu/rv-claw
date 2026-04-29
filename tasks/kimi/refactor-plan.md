@@ -1,9 +1,10 @@
-# RV-Claw 完整重构计划
+# RV-Claw 完整重构计划 v3.0（整合版）
 
-> **版本**: v1.0  
-> **日期**: 2026-04-29  
-> **对标基准**: ScienceClaw (完整功能迁移) + design.md (后端架构重构)  
+> **版本**: v3.0
+> **日期**: 2026-04-29
+> **对标基准**: ScienceClaw (完整功能迁移) + design.md (后端架构重构)
 > **目标**: 在保留 ScienceClaw 全部前端功能的基础上，实现 RV-Insights 五阶段 Agent Pipeline
+> **整合来源**: refactor-plan.md (v1.0) + refactor-plan-v2.md (v2.0) + design.md (权威架构) + 实际代码库分析
 
 ---
 
@@ -43,11 +44,29 @@
 - [7. 实现阶段规划](#7-实现阶段规划)
   - [7.1 Phase 0: 基础架构 (2周)](#71-phase-0-基础架构-2周)
   - [7.2 Phase 1: Chat 模式完整迁移 (2周)](#72-phase-1-chat-模式完整迁移-2周)
-  - [7.3 Phase 2: Pipeline 后端骨架 (3周)](#73-phase-2-pipeline-后端骨架-3周)
-  - [7.4 Phase 3: Pipeline 前端与集成 (3周)](#74-phase-3-pipeline-前端与集成-3周)
-  - [7.5 Phase 4: 高级功能 (2周)](#75-phase-4-高级功能-2周)
-- [8. 风险与缓解](#8-风险与缓解)
-- [9. 验收标准](#9-验收标准)
+  - [7.3 Phase 2: Pipeline 后端骨架 (4周)](#73-phase-2-pipeline-后端骨架-4周)
+  - [7.4 Phase 3: Pipeline 前端与集成 (4周)](#74-phase-3-pipeline-前端与集成-4周)
+  - [7.5 Phase 4: 集成测试与优化 (3周)](#75-phase-4-集成测试与优化-3周)
+  - [7.6 Phase 5: 生产准备 (1周)](#76-phase-5-生产准备-1周)
+- [8. 测试策略](#8-测试策略)
+  - [8.1 测试金字塔](#81-测试金字塔)
+  - [8.2 测试分层详情](#82-测试分层详情)
+- [9. 监控与可观测性](#9-监控与可观测性)
+  - [9.1 三大支柱](#91-三大支柱)
+  - [9.2 业务指标](#92-业务指标)
+  - [9.3 日志规范](#93-日志规范)
+  - [9.4 关键告警规则](#94-关键告警规则)
+- [10. 风险与缓解](#10-风险与缓解)
+  - [10.1 风险矩阵](#101-风险矩阵)
+  - [10.2 详细缓解措施](#102-详细缓解措施)
+- [11. 验收标准](#11-验收标准)
+  - [11.1 功能验收](#111-功能验收)
+  - [11.2 性能验收](#112-性能验收)
+  - [11.3 质量验收](#113-质量验收)
+- [附录 A: 术语表](#附录-a-术语表)
+- [附录 B: 参考文档](#附录-b-参考文档)
+- [附录 C: ScienceClaw → rv-claw 文件映射](#附录-c-scienceclaw--rv-claw-文件映射)
+- [附录 D: 关键依赖版本锁定](#附录-d-关键依赖版本锁定)
 
 ---
 
@@ -160,13 +179,44 @@ ScienceClaw 是一个功能完备的**个人科研助手**，基于 LangChain De
 
 | 维度 | 现状 |
 |------|------|
-| **代码基线** | ScienceClaw 完整代码库（backend + frontend + sandbox + task-service + websearch） |
+| **代码基线** | ScienceClaw 完整代码库（backend + frontend + sandbox + task-service + websearch），位于 `ScienceClaw/` 目录下 |
 | **设计文档** | `tasks/design.md` 完整（4582 行），但 `mvp-tasks.md`, `migration-map.md`, `chat-architecture.md`, `conventions.md` 缺失 |
 | **Pipeline 实现** | **零代码**。LangGraph Pipeline 引擎、5 个 Agent 节点、Human-in-the-Loop 均未实现 |
 | **前端 Pipeline UI** | **零代码**。CaseListView, CaseDetailView, PipelineView, ReviewPanel, DiffViewer 均未实现 |
 | **RISC-V 专用逻辑** | **零代码**。Patchwork API、ISA 扩展验证、checkpatch.pl 集成、QEMU 测试均未实现 |
 | **RBAC** | ScienceClaw 使用简单本地认证，无角色区分。设计文档要求 admin/user 双角色 |
 | **部署** | docker-compose.yml 存在，但按 ScienceClaw 配置，未加入 PostgreSQL 和 Pipeline 专用服务 |
+
+**当前前端路由**（`ScienceClaw/frontend/src/main.ts`）：
+```typescript
+/chat               -> MainLayout -> HomePage (alias /, /home)
+/chat/:sessionId    -> MainLayout -> ChatPage
+/chat/skills        -> MainLayout -> SkillsPage
+/chat/skills/:name  -> MainLayout -> SkillDetailPage
+/chat/tools         -> MainLayout -> ToolsPage
+/chat/tools/:name   -> MainLayout -> ToolDetailPage
+/chat/science-tools/:name -> MainLayout -> ScienceToolDetail
+/chat/tasks         -> MainLayout -> TasksPage
+/share/:sessionId   -> ShareLayout -> SharePage
+/login              -> LoginPage
+```
+
+**当前后端路由**（`ScienceClaw/backend/main.py`）：
+```python
+/api/v1/auth        # 登录/注册/Token 刷新
+/api/v1/sessions    # 会话 CRUD + SSE Chat
+/api/v1/file        # 文件操作
+/api/v1/models      # 模型配置
+/api/v1/tooluniverse # 工具宇宙
+/api/v1/task_settings # 任务设置
+/api/v1/memory      # 记忆管理
+/api/v1/science     # 科学工具
+/api/v1/chat        # 通用聊天
+/api/v1/statistics  # 统计
+/api/v1/im          # IM 集成（飞书/微信）
+```
+
+---
 
 ### 1.3 核心矛盾与解决思路
 
@@ -230,6 +280,8 @@ ScienceClaw 是一个功能完备的**个人科研助手**，基于 LangChain De
 └─────────────────┘      └────────────────────┘     └─────────────────┘
 ```
 
+---
+
 ### 2.2 服务拓扑
 
 ```yaml
@@ -239,55 +291,57 @@ services:
   nginx:
     image: nginx:1.25-alpine
     ports: ["80:80"]
-    
+
   # ── 后端 API ──
   backend:
-    build: ./backend
+    build: ./ScienceClaw/backend   # 保留原目录结构
     ports: ["8000:8000"]
     depends_on: [mongodb, postgres, redis]
-    
+
   # ── Chat 沙箱 (ScienceClaw 现有) ──
   sandbox:
     build: ./ScienceClaw/sandbox
     ports: ["18080:8080"]
-    
+
   # ── Pipeline 专用 QEMU 沙箱 (新增) ──
   qemu-sandbox:
     build: ./sandbox-qemu  # 新增 Dockerfile
     # 交叉编译工具链 + QEMU RISC-V
-    
+
   # ── 数据库 ──
   mongodb:
     image: mongo:7.0
     ports: ["27017:27017"]
-    
+
   postgres:
     image: postgres:16-alpine  # 新增：LangGraph checkpointer
     ports: ["5432:5432"]
-    
+
   redis:
     image: redis:7-alpine
     ports: ["6379:6379"]
-    
+
   # ── 搜索服务 (ScienceClaw 现有) ──
   websearch:
     build: ./ScienceClaw/websearch
     ports: ["8068:8068"]
-    
+
   searxng:
     image: searxng/searxng:latest
     ports: ["26080:8080"]
-    
+
   # ── 任务调度 (ScienceClaw 现有) ──
   scheduler_api:
     build: ./ScienceClaw/task-service
-    
+
   celery_worker:
     build: ./ScienceClaw/task-service
-    
+
   celery_beat:
     build: ./ScienceClaw/task-service
 ```
+
+---
 
 ### 2.3 技术栈锁定
 
@@ -313,14 +367,14 @@ services:
 ### 3.1 页面路由矩阵
 
 ```typescript
-// 最终路由配置
+// 最终路由配置 (ScienceClaw/frontend/src/main.ts 改造后)
 const routes = [
   // ── 公开路由 ──
   { path: '/login', component: LoginPage },
   { path: '/share/:token', component: ShareLayout, children: [
     { path: '', component: SharePage }
   ]},
-  
+
   // ── 认证后布局 ──
   {
     path: '/',
@@ -330,26 +384,26 @@ const routes = [
       // Chat 模式 (ScienceClaw 现有，全量保留)
       { path: '', name: 'home', component: HomePage },
       { path: 'chat/:sessionId', name: 'chat', component: ChatPage },
-      
+
       // Pipeline 模式 (新增)
       { path: 'cases', name: 'cases', component: CaseListView },
       { path: 'cases/:id', name: 'case-detail', component: CaseDetailView },
-      
+
       // 工具与技能 (ScienceClaw 现有)
       { path: 'tools', name: 'tools', component: ToolsPage },
       { path: 'tools/:name', name: 'tool-detail', component: ToolDetailPage },
       { path: 'skills', name: 'skills', component: SkillsPage },
       { path: 'skills/:name', name: 'skill-detail', component: SkillDetailPage },
       { path: 'science-tools/:name', name: 'science-tool', component: ScienceToolDetail },
-      
+
       // 任务调度 (ScienceClaw 现有)
-      { path: 'tasks', name: 'tasks', component: TasksListPage },
+      { path: 'tasks', name: 'tasks', component: TasksPage },
       { path: 'tasks/config', name: 'task-config', component: TaskConfigPage },
       { path: 'tasks/:id', name: 'task-run', component: TasksPage },
-      
+
       // 统计 (改造：从 metrics 改为 statistics)
       { path: 'statistics', name: 'statistics', component: StatisticsPage },
-      
+
       // 知识库 (Phase 2)
       // { path: 'knowledge', name: 'knowledge', component: KnowledgeView },
     ]
@@ -357,105 +411,107 @@ const routes = [
 ]
 ```
 
+---
+
 ### 3.2 ScienceClaw 功能全量迁移清单
 
 以下 **ScienceClaw 全部功能必须保留**，按模块列出迁移策略：
 
 #### Module 1: Chat 核心 (零变更，直接复用)
 ```
-src/pages/HomePage.vue          → 保留
-src/pages/ChatPage.vue          → 保留
-src/components/ChatBox.vue      → 保留
-src/components/ChatMessage.vue  → 保留
-src/components/ProcessMessage.vue → 保留
-src/components/StepMessage.vue  → 保留
-src/components/ActivityPanel.vue → 保留
-src/components/PlanPanel.vue    → 保留
-src/components/ToolUse.vue      → 保留
-src/components/TakeOverView.vue → 保留
-src/components/SuggestedQuestions.vue → 保留
-src/components/AttachmentsMessage.vue → 保留
-src/components/ChatBoxFiles.vue → 保留
-src/components/toolViews/*.vue  → 保留
-src/composables/usePendingChat.ts → 保留
-src/composables/useMessageGrouper.ts → 保留
+ScienceClaw/frontend/src/pages/HomePage.vue          → 保留
+ScienceClaw/frontend/src/pages/ChatPage.vue          → 保留
+ScienceClaw/frontend/src/components/ChatBox.vue      → 保留
+ScienceClaw/frontend/src/components/ChatMessage.vue  → 保留
+ScienceClaw/frontend/src/components/ProcessMessage.vue → 保留
+ScienceClaw/frontend/src/components/StepMessage.vue  → 保留
+ScienceClaw/frontend/src/components/ActivityPanel.vue → 保留
+ScienceClaw/frontend/src/components/PlanPanel.vue    → 保留
+ScienceClaw/frontend/src/components/ToolUse.vue      → 保留
+ScienceClaw/frontend/src/components/TakeOverView.vue → 保留
+ScienceClaw/frontend/src/components/SuggestedQuestions.vue → 保留
+ScienceClaw/frontend/src/components/AttachmentsMessage.vue → 保留
+ScienceClaw/frontend/src/components/ChatBoxFiles.vue → 保留
+ScienceClaw/frontend/src/components/toolViews/*.vue  → 保留
+ScienceClaw/frontend/src/composables/usePendingChat.ts → 保留
+ScienceClaw/frontend/src/composables/useMessageGrouper.ts → 保留
 ```
 
 #### Module 2: 会话管理 (零变更，直接复用)
 ```
-src/components/LeftPanel.vue    → 保留
-src/components/SessionItem.vue  → 保留
-src/components/SessionFileList.vue → 保留
-src/components/SessionFileListContent.vue → 保留
-src/composables/useLeftPanel.ts → 保留
-src/composables/useSessionGrouping.ts → 保留
-src/composables/useSessionListUpdate.ts → 保留
-src/composables/useSessionNotifications.ts → 保留
-src/composables/useSessionFileList.ts → 保留
+ScienceClaw/frontend/src/components/LeftPanel.vue    → 保留
+ScienceClaw/frontend/src/components/SessionItem.vue  → 保留
+ScienceClaw/frontend/src/components/SessionFileList.vue → 保留
+ScienceClaw/frontend/src/components/SessionFileListContent.vue → 保留
+ScienceClaw/frontend/src/composables/useLeftPanel.ts → 保留
+ScienceClaw/frontend/src/composables/useSessionGrouping.ts → 保留
+ScienceClaw/frontend/src/composables/useSessionListUpdate.ts → 保留
+ScienceClaw/frontend/src/composables/useSessionNotifications.ts → 保留
+ScienceClaw/frontend/src/composables/useSessionFileList.ts → 保留
 ```
 
 #### Module 3: 文件系统 (零变更，直接复用)
 ```
-src/components/FilePanel.vue    → 保留
-src/components/FilePanelContent.vue → 保留
-src/components/FilePreviewModal.vue → 保留
-src/components/FileViewer.vue   → 保留
-src/components/HtmlViewer.vue   → 保留
-src/components/ImageViewer.vue  → 保留
-src/components/VNCViewer.vue    → 保留
-src/components/MoleculeViewer.vue → 保留
-src/components/RoundFilesPopover.vue → 保留
-src/components/filePreviews/*.vue → 全部保留
-src/composables/useFilePanel.ts → 保留
-src/composables/useRightPanel.ts → 保留
+ScienceClaw/frontend/src/components/FilePanel.vue    → 保留
+ScienceClaw/frontend/src/components/FilePanelContent.vue → 保留
+ScienceClaw/frontend/src/components/FilePreviewModal.vue → 保留
+ScienceClaw/frontend/src/components/FileViewer.vue   → 保留
+ScienceClaw/frontend/src/components/HtmlViewer.vue   → 保留
+ScienceClaw/frontend/src/components/ImageViewer.vue  → 保留
+ScienceClaw/frontend/src/components/VNCViewer.vue    → 保留
+ScienceClaw/frontend/src/components/MoleculeViewer.vue → 保留
+ScienceClaw/frontend/src/components/RoundFilesPopover.vue → 保留
+ScienceClaw/frontend/src/components/filePreviews/*.vue → 全部保留
+ScienceClaw/frontend/src/composables/useFilePanel.ts → 保留
+ScienceClaw/frontend/src/composables/useRightPanel.ts → 保留
 ```
 
 #### Module 4: 沙箱与终端 (零变更，直接复用)
 ```
-src/components/SandboxPreview.vue → 保留
-src/components/SandboxTerminal.vue → 保留
-src/utils/sandbox.ts            → 保留
+ScienceClaw/frontend/src/components/SandboxPreview.vue → 保留
+ScienceClaw/frontend/src/components/SandboxTerminal.vue → 保留
+ScienceClaw/frontend/src/utils/sandbox.ts            → 保留
 ```
 
 #### Module 5: 工具与技能 (零变更，直接复用)
 ```
-src/pages/ToolsPage.vue         → 保留
-src/pages/ToolDetailPage.vue    → 保留
-src/pages/SkillsPage.vue        → 保留
-src/pages/SkillDetailPage.vue   → 保留
-src/pages/ScienceToolDetail.vue → 保留
-src/components/ToolPanel.vue    → 保留
-src/components/ToolPanelContent.vue → 保留
-src/composables/useTool.ts      → 保留
-src/api/tooluniverse.ts         → 保留
+ScienceClaw/frontend/src/pages/ToolsPage.vue         → 保留
+ScienceClaw/frontend/src/pages/ToolDetailPage.vue    → 保留
+ScienceClaw/frontend/src/pages/SkillsPage.vue        → 保留
+ScienceClaw/frontend/src/pages/SkillDetailPage.vue   → 保留
+ScienceClaw/frontend/src/pages/ScienceToolDetail.vue → 保留
+ScienceClaw/frontend/src/components/ToolPanel.vue    → 保留
+ScienceClaw/frontend/src/components/ToolPanelContent.vue → 保留
+ScienceClaw/frontend/src/composables/useTool.ts      → 保留
+ScienceClaw/frontend/src/api/tooluniverse.ts         → 保留
 ```
 
 #### Module 6: 任务调度 (零变更，直接复用)
 ```
-src/pages/TasksListPage.vue     → 保留
-src/pages/TaskConfigPage.vue    → 保留
-src/pages/TasksPage.vue         → 保留
-src/api/tasks.ts                → 保留
-src/api/taskSettings.ts         → 保留
+ScienceClaw/frontend/src/pages/TasksPage.vue         → 保留
+ScienceClaw/frontend/src/pages/TasksListPage.vue     → 保留
+ScienceClaw/frontend/src/pages/TaskConfigPage.vue    → 保留
+ScienceClaw/frontend/src/api/tasks.ts                → 保留
+ScienceClaw/frontend/src/api/taskSettings.ts         → 保留
 ```
 
 #### Module 7: 设置系统 (扩展 RBAC，其余保留)
 ```
-src/components/settings/SettingsDialog.vue → 保留
-src/components/settings/SettingsTabs.vue   → 保留
-src/components/settings/AccountSettings.vue → 保留
-src/components/settings/ProfileSettings.vue → 保留
-src/components/settings/GeneralSettings.vue → 保留
-src/components/settings/PersonalizationSettings.vue → 保留
-src/components/settings/ModelSettings.vue → 保留
-src/components/settings/NotificationSettings.vue → 保留
-src/components/settings/TaskSettings.vue → 保留
-src/components/settings/TokenStatistics.vue → 保留 (数据扩展：增加 Pipeline Token 统计)
-src/components/settings/IMSystemSettings.vue → 保留
-src/components/settings/LarkBindingSettings.vue → 保留
-src/components/settings/WeChatClawBotSettings.vue → 保留
-src/components/settings/ChangePasswordDialog.vue → 保留
-src/composables/useSettingsDialog.ts → 保留
+ScienceClaw/frontend/src/components/settings/SettingsDialog.vue → 保留
+ScienceClaw/frontend/src/components/settings/SettingsTabs.vue   → 保留
+ScienceClaw/frontend/src/components/settings/AccountSettings.vue → 保留
+ScienceClaw/frontend/src/components/settings/ProfileSettings.vue → 保留
+ScienceClaw/frontend/src/components/settings/GeneralSettings.vue → 保留
+ScienceClaw/frontend/src/components/settings/PersonalizationSettings.vue → 保留
+ScienceClaw/frontend/src/components/settings/ModelSettings.vue → 保留
+ScienceClaw/frontend/src/components/settings/NotificationSettings.vue → 保留
+ScienceClaw/frontend/src/components/settings/TaskSettings.vue → 保留
+ScienceClaw/frontend/src/components/settings/TokenStatistics.vue → 保留 (数据扩展：增加 Pipeline Token 统计)
+ScienceClaw/frontend/src/components/settings/IMSystemSettings.vue → 保留
+ScienceClaw/frontend/src/components/settings/LarkBindingSettings.vue → 保留
+ScienceClaw/frontend/src/components/settings/WeChatClawBotSettings.vue → 保留
+ScienceClaw/frontend/src/components/settings/ChangePasswordDialog.vue → 保留
+ScienceClaw/frontend/src/composables/useSettingsDialog.ts → 保留
 ```
 
 **新增设置项**：
@@ -463,69 +519,71 @@ src/composables/useSettingsDialog.ts → 保留
 
 #### Module 8: 用户系统 (扩展 RBAC)
 ```
-src/pages/LoginPage.vue         → 保留
-src/components/login/*.vue      → 保留
-src/components/UserMenu.vue     → 保留
-src/components/LanguageSelector.vue → 保留
-src/composables/useAuth.ts      → 扩展：增加 role 字段
-src/utils/auth.ts               → 扩展：增加 role 判断
-src/api/auth.ts                 → 扩展：返回 role 信息
+ScienceClaw/frontend/src/pages/LoginPage.vue         → 保留
+ScienceClaw/frontend/src/components/login/*.vue      → 保留
+ScienceClaw/frontend/src/components/UserMenu.vue     → 保留
+ScienceClaw/frontend/src/components/LanguageSelector.vue → 保留
+ScienceClaw/frontend/src/composables/useAuth.ts      → 扩展：增加 role 字段
+ScienceClaw/frontend/src/utils/auth.ts               → 扩展：增加 role 判断
+ScienceClaw/frontend/src/api/auth.ts                 → 扩展：返回 role 信息
 ```
 
 #### Module 9: 统计 (改造 endpoint)
 ```
-src/pages/MetricsView.vue → 重命名为 StatisticsPage.vue
-src/api/statistics 相关   → 保留，endpoint 从 /metrics 改为 /statistics
+ScienceClaw/frontend/src/pages/StatisticsPage.vue    → 新增（替代 MetricsView）
+ScienceClaw/frontend/src/api/statistics.ts           → 保留，endpoint 从 /metrics 改为 /statistics
 ```
 
 #### Module 10: 共享 (零变更)
 ```
-src/pages/ShareLayout.vue       → 保留
-src/pages/SharePage.vue         → 保留
+ScienceClaw/frontend/src/pages/ShareLayout.vue       → 保留
+ScienceClaw/frontend/src/pages/SharePage.vue         → 保留
 ```
 
 #### Module 11: UI 基础组件 (零变更)
 ```
-src/components/ui/*.vue         → 全部保留
-src/components/icons/*.vue      → 全部保留
-src/components/CustomDialog.vue → 保留
-src/components/ContextMenu.vue  → 保留
-src/components/Toast.vue        → 保留
-src/components/LoadingIndicator.vue → 保留
-src/components/MonacoEditor.vue → 保留
-src/components/SimpleBar.vue    → 保留
-src/components/MarkdownEnhancements.vue → 保留
-src/composables/useDialog.ts    → 保留
-src/composables/useContextMenu.ts → 保留
-src/composables/useTheme.ts     → 保留
-src/composables/useTime.ts      → 保留
-src/composables/useI18n.ts      → 保留
-src/composables/useResizeObserver.ts → 保留
+ScienceClaw/frontend/src/components/ui/*.vue         → 全部保留
+ScienceClaw/frontend/src/components/icons/*.vue      → 全部保留
+ScienceClaw/frontend/src/components/CustomDialog.vue → 保留
+ScienceClaw/frontend/src/components/ContextMenu.vue  → 保留
+ScienceClaw/frontend/src/components/Toast.vue        → 保留
+ScienceClaw/frontend/src/components/LoadingIndicator.vue → 保留
+ScienceClaw/frontend/src/components/MonacoEditor.vue → 保留
+ScienceClaw/frontend/src/components/SimpleBar.vue    → 保留
+ScienceClaw/frontend/src/components/MarkdownEnhancements.vue → 保留
+ScienceClaw/frontend/src/composables/useDialog.ts    → 保留
+ScienceClaw/frontend/src/composables/useContextMenu.ts → 保留
+ScienceClaw/frontend/src/composables/useTheme.ts     → 保留
+ScienceClaw/frontend/src/composables/useTime.ts      → 保留
+ScienceClaw/frontend/src/composables/useI18n.ts      → 保留
+ScienceClaw/frontend/src/composables/useResizeObserver.ts → 保留
 ```
 
 #### Module 12: API 基础设施 (扩展)
 ```
-src/api/client.ts               → 保留（SSE 连接、Token 刷新）
-src/api/index.ts                → 扩展：导出 cases, reviews, artifacts
-src/api/auth.ts                 → 扩展：role 支持
-src/api/agent.ts                → 保留
-src/api/file.ts                 → 保留
-src/api/im.ts                   → 保留
-src/api/memory.ts               → 保留
-src/api/models.ts               → 保留
-src/api/webhooks.ts             → 保留
+ScienceClaw/frontend/src/api/client.ts               → 保留（SSE 连接、Token 刷新）
+ScienceClaw/frontend/src/api/index.ts                → 扩展：导出 cases, reviews, artifacts
+ScienceClaw/frontend/src/api/auth.ts                 → 扩展：role 支持
+ScienceClaw/frontend/src/api/agent.ts                → 保留
+ScienceClaw/frontend/src/api/file.ts                 → 保留
+ScienceClaw/frontend/src/api/im.ts                   → 保留
+ScienceClaw/frontend/src/api/memory.ts               → 保留
+ScienceClaw/frontend/src/api/models.ts               → 保留
+ScienceClaw/frontend/src/api/webhooks.ts             → 保留
 ```
+
+---
 
 ### 3.3 新增 Pipeline 前端模块
 
 以下组件为 RV-Insights **全新开发**，不依赖 ScienceClaw 现有代码（但共享 UI 组件库）：
 
 ```
-src/views/CaseListView.vue          # 案例列表（类似任务列表风格）
-src/views/CaseDetailView.vue        # 案例详情 — 核心页面
-src/views/StatisticsPage.vue        # 统计页（替代 MetricsView）
+ScienceClaw/frontend/src/views/CaseListView.vue          # 案例列表（类似任务列表风格）
+ScienceClaw/frontend/src/views/CaseDetailView.vue        # 案例详情 — 核心页面
+ScienceClaw/frontend/src/views/StatisticsPage.vue        # 统计页（替代 MetricsView）
 
-src/components/pipeline/
+ScienceClaw/frontend/src/components/pipeline/
   ├── PipelineView.vue              # 5 阶段流水线可视化
   ├── StageNode.vue                 # 单阶段节点
   ├── StageConnector.vue            # 阶段连接线（带状态动画）
@@ -534,54 +592,56 @@ src/components/pipeline/
   ├── CostIndicator.vue             # 成本指示器
   └── PipelineTimeline.vue          # 时间线视图
 
-src/components/review/
+ScienceClaw/frontend/src/components/review/
   ├── ReviewPanel.vue               # 审核决策面板
   ├── ReviewFinding.vue             # 单条审核发现
   ├── ReviewFindingList.vue         # 审核发现列表
   ├── DiffViewer.vue                # 基于 Monaco 的 Diff
   └── ReviewHistory.vue             # 历史审核记录
 
-src/components/exploration/
+ScienceClaw/frontend/src/components/exploration/
   ├── ContributionCard.vue          # 贡献机会卡片
   ├── EvidenceChain.vue             # 证据链展示
   ├── EvidenceItem.vue              # 单条证据
   └── FeasibilityBadge.vue          # 可行性评分徽章
 
-src/components/planning/
+ScienceClaw/frontend/src/components/planning/
   ├── ExecutionPlanTree.vue         # 执行计划树
   ├── DevStepCard.vue               # 开发步骤卡片
   ├── TestCaseList.vue              # 测试用例列表
   └── RiskBadge.vue                 # 风险等级徽章
 
-src/components/testing/
+ScienceClaw/frontend/src/components/testing/
   ├── TestResultSummary.vue         # 测试结果摘要
   ├── TestLogViewer.vue             # 测试日志查看器
   ├── QemuStatus.vue                # QEMU 环境状态
   └── CoverageBadge.vue             # 覆盖率徽章
 
-src/components/shared/
+ScienceClaw/frontend/src/components/shared/
   ├── AgentEventLog.vue             # Agent 实时事件日志
   ├── ThinkingBlock.vue             # Agent 思考过程（可折叠）
   ├── ToolCallView.vue              # 工具调用可视化
   └── ArtifactViewer.vue            # 产物查看器
 
-src/composables/
+ScienceClaw/frontend/src/composables/
   ├── useCaseEvents.ts              # SSE 事件流管理（参考 usePendingChat）
   ├── usePipeline.ts                # Pipeline 状态追踪
   └── useReview.ts                  # 审核操作封装
 
-src/composables/ (新增)
+ScienceClaw/frontend/src/composables/ (新增)
   ├── useCaseStore.ts               # 案例状态管理（模块级 ref 单例模式）
   ├── usePipelineStore.ts           # Pipeline 运行状态
   └── useReviewStore.ts             # 审核状态
 
-src/types/
+ScienceClaw/frontend/src/types/
   ├── case.ts                       # 案例类型定义
   ├── pipeline.ts                   # Pipeline 类型定义
   ├── event.ts                      # SSE 事件类型
   ├── artifact.ts                   # 产物类型定义
   └── review.ts                     # 审核类型定义
 ```
+
+---
 
 ### 3.4 组件复用与改造策略
 
@@ -597,6 +657,8 @@ src/types/
 | `SettingsDialog.vue` | ✅ 复用 | 增加 PipelineSettings Tab |
 | `TokenStatistics.vue` | ⚠️ 改造 | 增加 Pipeline 各阶段 Token 消耗展示 |
 | `LoadingIndicator.vue` | ✅ 复用 | StageNode 加载状态使用 |
+
+---
 
 ### 3.5 状态管理重构
 
@@ -617,14 +679,14 @@ export function useCaseStore() {
   async function createCase(data: CreateCaseRequest) { /* ... */ }
   async function submitReview(decision: ReviewDecision) { /* ... */ }
   async function startPipeline(caseId: string) { /* ... */ }
-  
-  return { 
-    cases: readonly(cases), 
-    currentCase: readonly(currentCase), 
-    pipelineStages: readonly(pipelineStages), 
-    reviewIterations: readonly(reviewIterations), 
-    pendingReview, 
-    loadCases, loadCase, createCase, submitReview, startPipeline 
+
+  return {
+    cases: readonly(cases),
+    currentCase: readonly(currentCase),
+    pipelineStages: readonly(pipelineStages),
+    reviewIterations: readonly(reviewIterations),
+    pendingReview,
+    loadCases, loadCase, createCase, submitReview, startPipeline
   }
 }
 
@@ -639,10 +701,12 @@ export function useAuth() {
 }
 ```
 
+---
+
 ### 3.6 API 层整合
 
 ```typescript
-// src/api/cases.ts (新增)
+// ScienceClaw/frontend/src/api/cases.ts (新增)
 export interface CreateCaseRequest {
   title: string
   target_repo: string
@@ -667,10 +731,10 @@ export async function getArtifacts(caseId: string, stage: string, round?: number
 export async function getHistory(caseId: string): Promise<ReviewRecord[]>
 export function subscribeCaseEvents(caseId: string, callbacks: SSECallbacks): Promise<() => void>
 
-// src/api/reviews.ts (新增)
+// ScienceClaw/frontend/src/api/reviews.ts (新增)
 export async function getReviewVerdict(caseId: string, iteration: number): Promise<ReviewVerdict>
 
-// src/api/artifacts.ts (新增)
+// ScienceClaw/frontend/src/api/artifacts.ts (新增)
 export async function downloadArtifact(caseId: string, path: string): Promise<Blob>
 export async function getArtifactContent(caseId: string, path: string): Promise<string>
 ```
@@ -682,7 +746,7 @@ export async function getArtifactContent(caseId: string, path: string): Promise<
 ### 4.1 FastAPI 路由重构
 
 ```python
-# backend/main.py (改造)
+# ScienceClaw/backend/main.py (改造)
 from backend.route.cases import router as cases_router        # 新增
 from backend.route.reviews import router as reviews_router    # 新增
 from backend.route.artifacts import router as artifacts_router # 新增
@@ -727,10 +791,12 @@ app.include_router(pipeline_router, prefix="/api/v1")
 | `route/artifacts.py` | **产物下载 / 内容读取 / 路径浏览** | **新增** |
 | `route/pipeline.py` | **Pipeline 内部控制 / 状态查询 / 强制停止** | **新增** |
 
+---
+
 ### 4.2 LangGraph Pipeline 引擎
 
 ```
-backend/pipeline/
+ScienceClaw/backend/pipeline/
 ├── __init__.py
 ├── graph.py              # StateGraph 构建与编译
 ├── state.py              # PipelineState Pydantic 模型
@@ -780,10 +846,12 @@ REVIEW_ROUTES = {
 }
 ```
 
+---
+
 ### 4.3 Agent 适配器层
 
 ```
-backend/adapters/
+ScienceClaw/backend/adapters/
 ├── __init__.py
 ├── base.py               # AgentAdapter 抽象基类
 ├── claude_adapter.py     # Claude Agent SDK 适配器
@@ -809,10 +877,12 @@ backend/adapters/
    - 对外暴露 `AsyncIterator[AgentEvent]`
    - `AgentEvent` 包含 `event_type` 和 `data`
 
+---
+
 ### 4.4 数据源接入层
 
 ```
-backend/datasources/
+ScienceClaw/backend/datasources/
 ├── __init__.py
 ├── patchwork.py          # Patchwork API 客户端
 ├── mailing_list.py       # lore.kernel.org / groups.io 邮件解析
@@ -820,10 +890,12 @@ backend/datasources/
 └── isa_registry.py       # RISC-V ISA 扩展注册表验证
 ```
 
+---
+
 ### 4.5 产物与审计系统
 
 ```
-backend/contracts/        # Pydantic 数据契约
+ScienceClaw/backend/contracts/        # Pydantic 数据契约
 ├── __init__.py
 ├── exploration.py        # ExplorationResult, Evidence
 ├── planning.py           # ExecutionPlan, DevStep, TestCase
@@ -831,11 +903,13 @@ backend/contracts/        # Pydantic 数据契约
 ├── review.py             # ReviewVerdict, ReviewFinding
 └── testing.py            # TestResult
 
-backend/db/
+ScienceClaw/backend/db/
 ├── mongo.py              # MongoDB 连接（ScienceClaw 现有）
 ├── collections.py        # 集合初始化与索引
 └── audit.py              # 审计日志写入
 ```
+
+---
 
 ### 4.6 SSE 事件总线
 
@@ -843,12 +917,12 @@ backend/db/
 # pipeline/event_publisher.py
 class PipelineEventPublisher:
     """桥接 LangGraph 节点 → Redis Pub/Sub → FastAPI SSE"""
-    
+
     async def publish(self, case_id: str, event_type: str, data: dict):
         # 1. 序列号递增
         # 2. 发布到 Redis Pub/Sub (实时)
         # 3. 写入 Redis Stream (重连恢复，保留 500 条)
-        
+
     async def get_events_since(self, case_id: str, last_seq: int) -> list[PipelineEvent]:
         # 重连时恢复丢失事件
 ```
@@ -861,6 +935,8 @@ async def case_events(case_id: str, last_event_id: int | None = Header(None, ali
     # 2. 实时订阅 Redis Pub/Sub
     # 3. 心跳（每 30 秒）
 ```
+
+---
 
 ### 4.7 认证鉴权重构
 
@@ -926,7 +1002,7 @@ db.createCollection("contribution_cases", {
       properties: {
         _id: { bsonType: "string" },
         title: { bsonType: "string" },
-        status: { 
+        status: {
           enum: [
             "created", "exploring", "pending_explore_review",
             "planning", "pending_plan_review",
@@ -978,13 +1054,15 @@ db.createCollection("stage_outputs")
 db.contribution_cases.createIndex({ status: 1, created_at: -1 })
 db.contribution_cases.createIndex({ target_repo: 1 })
 db.contribution_cases.createIndex({ created_by: 1 })
-db.contribution_cases.createIndex({ abandoned_at: 1 }, 
+db.contribution_cases.createIndex({ abandoned_at: 1 },
   { expireAfterSeconds: 7776000, partialFilterExpression: { status: "abandoned" } })
 
 db.human_reviews.createIndex({ case_id: 1, created_at: -1 })
 db.audit_log.createIndex({ case_id: 1, timestamp: -1 })
 db.audit_log.createIndex({ timestamp: 1 }, { expireAfterSeconds: 63072000 }) // 2年TTL
 ```
+
+---
 
 ### 5.2 PostgreSQL Checkpointer
 
@@ -997,6 +1075,8 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 # - checkpoint_blobs (大型状态数据)
 # - checkpoint_writes (写入记录)
 ```
+
+---
 
 ### 5.3 Redis 使用策略
 
@@ -1056,6 +1136,8 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 | GET | `/api/v1/task-settings` | 任务设置 |
 | PUT | `/api/v1/task-settings` | 更新任务设置 |
 
+---
+
 ### 6.2 新增的 Pipeline API
 
 | 方法 | 路径 | 说明 | 认证 |
@@ -1073,6 +1155,8 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 | POST | `/api/v1/cases/:id/stop` | 强制停止 Pipeline | ✅ |
 | GET | `/api/v1/pipeline/status` | 系统 Pipeline 状态 | ✅ admin |
 
+---
+
 ### 6.3 变更的 API
 
 | 方法 | 原路径 | 新路径 | 变更说明 |
@@ -1087,123 +1171,195 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 ## 7. 实现阶段规划
 
-### 7.1 Phase 0: 基础架构 (2 周)
+### 7.0 时间线总览
 
-**目标**：搭建双模式开发基础，确保 ScienceClaw 功能无损。
+```
+Week:  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16
+       ├─Phase 0─┤  ├─Phase 1─┤  ├────Phase 2────┤  ├────Phase 3────┤  ├─Phase 4─┤
+       基础架构    Chat 迁移    Pipeline 后端      Pipeline 前端      高级功能
 
-| 任务 | 详情 | 产出 |
-|------|------|------|
-| P0.1 | 创建缺失设计文档：`mvp-tasks.md`, `migration-map.md`, `chat-architecture.md`, `conventions.md` | 4 份文档 |
-| P0.2 | 初始化 `backend/pipeline/` 目录结构 | 空目录框架 |
-| P0.3 | 初始化 `backend/adapters/` 目录结构 | 空目录框架 |
-| P0.4 | 初始化 `backend/datasources/` 目录结构 | 空目录框架 |
-| P0.5 | 初始化 `backend/contracts/` 目录结构 + Pydantic 基类 | 数据契约骨架 |
-| P0.6 | 初始化前端 `src/views/`, `src/components/pipeline/` 目录 | 空目录框架 |
-| P0.7 | Docker Compose 增加 `postgres` 服务 | 更新 docker-compose.yml |
-| P0.8 | 数据库索引脚本 | `backend/db/collections.py` 更新 |
-| P0.9 | 认证扩展：User 模型增加 `role` 字段 | DB migration + API 改造 |
-| P0.10 | 回归测试：确保 ScienceClaw 所有现有功能正常 | 测试报告 |
+里程碑:
+M0 (W2): 基础架构就绪，所有服务可启动
+M1 (W4): Chat 功能 100% 迁移完成
+M2 (W8): Pipeline 后端可跑通单阶段
+M3 (W12): Pipeline 前后端联调完成
+M4 (W14): E2E 测试通过，可演示完整案例
+M5 (W16): 生产就绪，性能/安全/监控完备
+```
 
-**验收标准**：
-- [ ] docker-compose up 成功启动所有服务
-- [ ] ScienceClaw Chat 模式功能 100% 正常
-- [ ] 数据库新增集合和索引正确创建
+---
+
+### 7.1 Phase 0: 基础架构（2周）
+
+**目标**: 搭建双模式开发基础，确保 ScienceClaw 功能无损
+
+#### Week 1: 基础设施
+
+| 任务 ID | 任务 | 详情 | 产出 | 负责人 | 阻塞项 |
+|---------|------|------|------|--------|--------|
+| P0.1 | 创建缺失设计文档 | `mvp-tasks.md`, `migration-map.md`, `chat-architecture.md`, `conventions.md` | 4 份文档 | Tech Lead | 无 |
+| P0.2 | 初始化后端目录结构 | `ScienceClaw/backend/pipeline/`, `adapters/`, `datasources/`, `contracts/` | 目录框架 | Backend Dev | 无 |
+| P0.3 | Docker Compose 扩展 | 增加 `postgres`, `qemu-sandbox` 服务 | `docker-compose.yml` | DevOps | 无 |
+| P0.4 | PostgreSQL 初始化脚本 | `postgres-init.sql` 创建 checkpointer 表 | SQL 脚本 | Backend Dev | P0.2 |
+| P0.5 | MongoDB 索引脚本 | `mongo-init.js` 创建 cases/audit 索引 | JS 脚本 | Backend Dev | P0.2 |
+| P0.6 | 认证扩展 | User 模型增加 `role` 字段，RBAC 中间件 | `user.py`, `dependencies.py` | Backend Dev | 无 |
+
+#### Week 2: 验证与配置
+
+| 任务 ID | 任务 | 详情 | 产出 | 负责人 | 阻塞项 |
+|---------|------|------|------|--------|--------|
+| P0.7 | 环境变量配置 | `.env.example` 更新所有新配置项 | 配置文件 | DevOps | P0.3 |
+| P0.8 | 依赖锁定 | `requirements.txt` 追加新依赖 | 依赖文件 | Backend Dev | P0.2 |
+| P0.9 | 健康检查端点 | `/health` 扩展检查 PostgreSQL | `main.py` | Backend Dev | P0.3 |
+| P0.10 | 回归测试基线 | 记录 ScienceClaw 功能测试通过基线 | 测试报告 | QA | P0.6 |
+| P0.11 | CI/CD 配置 | GitHub Actions 增加 Pipeline 阶段检查 | `.github/workflows/ci.yml` | DevOps | 无 |
+
+**Phase 0 DoD (Definition of Done)**:
+- [ ] `docker compose up` 成功启动 10+ 个服务
+- [ ] `pytest` 现有测试全部通过
+- [ ] `pnpm build` 前端构建成功
 - [ ] admin/user 双角色认证正常
+- [ ] PostgreSQL checkpointer 表自动创建
+- [ ] 所有新目录结构就绪
 
-### 7.2 Phase 1: Chat 模式完整迁移 (2 周)
+---
 
-**目标**：将 ScienceClaw 前端功能完整迁移到 rv-claw，零功能丢失。
+### 7.2 Phase 1: Chat 模式完整迁移（2周）
 
-| 任务 | 详情 | 产出 |
-|------|------|------|
-| P1.1 | 前端路由重构：新增 `/cases/*`，保留所有现有路由 | `router/index.ts` |
-| P1.2 | MainLayout 扩展：LeftPanel 增加 "Cases" 导航 | `LeftPanel.vue` 改造 |
-| P1.3 | 统计 API 路径迁移：`/metrics/*` → `/statistics/*` | `route/statistics.py` |
-| P1.4 | 前端 StatisticsPage 替换 MetricsView | `StatisticsPage.vue` |
-| P1.5 | Settings 扩展：新增 PipelineSettings Tab | `PipelineSettings.vue` |
-| P1.6 | API 层整合：导出 cases, reviews, artifacts API | `api/index.ts` |
-| P1.7 | 类型定义：创建 case.ts, pipeline.ts, event.ts, artifact.ts, review.ts | `types/*.ts` |
-| P1.8 | 状态管理：创建 caseStore.ts, pipelineStore.ts | `stores/*.ts` |
-| P1.9 | 端到端回归测试：所有 ScienceClaw 页面可正常访问 | E2E 测试通过 |
-| P1.10 | 国际化：新增 Pipeline 相关翻译键 | `locales/zh.ts`, `locales/en.ts` |
+**目标**: 将 ScienceClaw 前端功能完整迁移到 rv-claw，零功能丢失
 
-**验收标准**：
+#### Week 3: 前端路由与布局
+
+| 任务 ID | 任务 | 详情 | 产出 | 阻塞项 |
+|---------|------|------|------|--------|
+| P1.1 | 路由重构 | 新增 `/cases/*` 路由，保留现有路由 | `router/index.ts` | 无 |
+| P1.2 | LeftPanel 扩展 | 增加 "Cases" 导航入口 | `LeftPanel.vue` | P1.1 |
+| P1.3 | MainLayout 改造 | 整合 Cases 导航状态 | `MainLayout.vue` | P1.2 |
+| P1.4 | 类型定义 | 创建 `case.ts`, `pipeline.ts`, `event.ts`, `artifact.ts`, `review.ts` | `types/*.ts` | 无 |
+| P1.5 | API 类型定义 | cases/reviews/artifacts API 请求/响应类型 | `api/types.ts` | P1.4 |
+
+#### Week 4: API 与设置
+
+| 任务 ID | 任务 | 详情 | 产出 | 阻塞项 |
+|---------|------|------|------|--------|
+| P1.6 | Statistics API 迁移 | `/metrics/*` → `/statistics/*` | `statistics.py` | 无 |
+| P1.7 | StatisticsPage | 替换 MetricsView，增加 Pipeline 统计 | `StatisticsPage.vue` | P1.6 |
+| P1.8 | Settings 扩展 | 新增 PipelineSettings Tab | `PipelineSettings.vue` | 无 |
+| P1.9 | API 层整合 | 导出 cases, reviews, artifacts API | `api/index.ts` | P1.5 |
+| P1.10 | i18n 扩展 | 新增 Pipeline 相关翻译键（中英文） | `locales/*.ts` | 无 |
+| P1.11 | E2E 基线测试 | 验证所有 ScienceClaw 页面可访问 | 测试通过 | P1.1-P1.10 |
+
+**Phase 1 DoD**:
 - [ ] 所有 ScienceClaw 页面可正常访问且功能完整
 - [ ] 新增 `/cases` 路由可访问（空页面即可）
-- [ ] 设置系统新增 PipelineSettings
-- [ ] 左侧导航栏新增 Cases 入口
+- [ ] 设置系统新增 PipelineSettings Tab
+- [ ] 统计 API endpoint 迁移完成
+- [ ] E2E 回归测试基线通过
 
-### 7.3 Phase 2: Pipeline 后端骨架 (3 周)
+---
 
-**目标**：实现 Pipeline 后端核心，包括 LangGraph 引擎、Agent 节点、SSE 事件流。
+### 7.3 Phase 2: Pipeline 后端骨架（4周）
 
-| 任务 | 详情 | 产出 |
-|------|------|------|
-| P2.1 | PipelineState Pydantic 模型 | `pipeline/state.py` |
-| P2.2 | StateGraph 构建与编译 | `pipeline/graph.py` |
-| P2.3 | AgentAdapter 抽象基类 + 统一事件模型 | `adapters/base.py` |
-| P2.4 | ClaudeAgentAdapter 实现 | `adapters/claude_adapter.py` |
-| P2.5 | OpenAIAgentAdapter 实现 | `adapters/openai_adapter.py` |
-| P2.6 | EventPublisher (Redis Pub/Sub + Stream) | `pipeline/event_publisher.py` |
-| P2.7 | ArtifactManager (文件系统产物管理) | `pipeline/artifact_manager.py` |
-| P2.8 | CostCircuitBreaker (成本熔断器) | `pipeline/cost_guard.py` |
-| P2.9 | explore_node 实现 (Claude SDK) | `pipeline/nodes/explore.py` |
-| P2.10 | plan_node 实现 (OpenAI SDK) | `pipeline/nodes/plan.py` |
-| P2.11 | develop_node 实现 (Claude SDK) | `pipeline/nodes/develop.py` |
-| P2.12 | review_node 实现 (OpenAI/Codex + 确定性工具) | `pipeline/nodes/review.py` |
-| P2.13 | test_node 实现 (Claude SDK + QEMU) | `pipeline/nodes/test.py` |
-| P2.14 | human_gate_node 实现 (interrupt) | `pipeline/nodes/human_gate.py` |
-| P2.15 | route_review_decision (迭代收敛检测) | `pipeline/routes.py` |
-| P2.16 | route_human_decision | `pipeline/routes.py` |
-| P2.17 | cases 路由：CRUD + start + events SSE | `route/cases.py` |
-| P2.18 | reviews 路由：submit + history | `route/reviews.py` |
-| P2.19 | artifacts 路由：download + content | `route/artifacts.py` |
-| P2.20 | pipeline 路由：status + stop | `route/pipeline.py` |
-| P2.21 | 数据源：PatchworkClient | `datasources/patchwork.py` |
-| P2.22 | 数据源：MailingListCrawler | `datasources/mailing_list.py` |
-| P2.23 | 数据源：ISA 扩展注册表验证 | `datasources/isa_registry.py` |
-| P2.24 | 单元测试：路由决策函数 | `tests/unit/test_routes.py` |
-| P2.25 | 单元测试：数据契约验证 | `tests/unit/test_contracts.py` |
-| P2.26 | 集成测试：Pipeline 完整流程 | `tests/integration/test_pipeline.py` |
+**目标**: 实现 Pipeline 后端核心，包括 LangGraph 引擎、Agent 节点、SSE 事件流
 
-**验收标准**：
+#### Week 5-6: Pipeline 基础设施
+
+| 任务 ID | 任务 | 详情 | 产出 | 阻塞项 | 复杂度 |
+|---------|------|------|------|--------|--------|
+| P2.1 | PipelineState 模型 | TypedDict 定义所有状态字段 | `state.py` | 无 | ⭐⭐ |
+| P2.2 | StateGraph 构建 | 9 节点 + 4 门 + 条件边定义 | `graph.py` | P2.1 | ⭐⭐⭐ |
+| P2.3 | AgentAdapter 基类 | 抽象基类 + 统一 AgentEvent 模型 | `adapters/base.py` | 无 | ⭐⭐ |
+| P2.4 | ClaudeAgentAdapter | 子进程模型实现 | `claude_adapter.py` | P2.3 | ⭐⭐⭐⭐ |
+| P2.5 | OpenAIAgentAdapter | 库原生模型实现 | `openai_adapter.py` | P2.3 | ⭐⭐⭐ |
+| P2.6 | EventPublisher | Redis Pub/Sub + Stream 实现 | `event_publisher.py` | 无 | ⭐⭐⭐ |
+| P2.7 | ArtifactManager | 文件系统产物管理 | `artifact_manager.py` | 无 | ⭐⭐ |
+| P2.8 | CostCircuitBreaker | 成本熔断器装饰器 | `cost_guard.py` | 无 | ⭐⭐ |
+
+#### Week 7: Agent 节点实现（上）
+
+| 任务 ID | 任务 | 详情 | 产出 | 阻塞项 | 复杂度 |
+|---------|------|------|------|--------|--------|
+| P2.9 | explore_node | Explorer Agent (Claude SDK) | `nodes/explore.py` | P2.4 | ⭐⭐⭐⭐ |
+| P2.10 | plan_node | Planner Agent (OpenAI SDK) | `nodes/plan.py` | P2.5 | ⭐⭐⭐ |
+| P2.11 | develop_node | Developer Agent (Claude SDK) | `nodes/develop.py` | P2.4 | ⭐⭐⭐⭐ |
+| P2.12 | human_gate_node | 人工审批门 (interrupt) | `nodes/human_gate.py` | P2.2 | ⭐⭐⭐ |
+| P2.13 | route_human_decision | 人工决策路由函数 | `routes.py` | P2.12 | ⭐⭐ |
+
+#### Week 8: Agent 节点实现（下）
+
+| 任务 ID | 任务 | 详情 | 产出 | 阻塞项 | 复杂度 |
+|---------|------|------|------|--------|--------|
+| P2.14 | review_node | Reviewer Agent + 确定性工具 | `nodes/review.py` | P2.5 | ⭐⭐⭐⭐ |
+| P2.15 | test_node | Tester Agent + QEMU 集成 | `nodes/test.py` | P2.4 | ⭐⭐⭐⭐ |
+| P2.16 | route_review_decision | 迭代收敛检测路由 | `routes.py` | P2.14 | ⭐⭐⭐ |
+| P2.17 | escalate_node | 升级处理节点 | `nodes/escalate.py` | P2.2 | ⭐⭐ |
+| P2.18 | 数据源实现 | PatchworkClient, MailingListCrawler | `datasources/*.py` | P2.9 | ⭐⭐⭐ |
+
+**并行任务 Week 7-8**: API 路由实现
+
+| 任务 ID | 任务 | 详情 | 产出 | 阻塞项 |
+|---------|------|------|------|--------|
+| P2.19 | cases 路由 | CRUD + start + events SSE | `route/cases.py` | P2.2 |
+| P2.20 | reviews 路由 | submit + history | `route/reviews.py` | P2.12 |
+| P2.21 | artifacts 路由 | download + content | `route/artifacts.py` | P2.7 |
+| P2.22 | pipeline 路由 | status + stop | `route/pipeline.py` | P2.2 |
+
+**Phase 2 DoD**:
 - [ ] 可通过 API 创建案例并启动 Pipeline
 - [ ] SSE 事件流正常推送阶段变更
 - [ ] 人工审核门可暂停并恢复 Pipeline
 - [ ] 产物文件正确写入文件系统
 - [ ] 3 轮 Develop↔Review 迭代正常
 - [ ] 成本熔断器在超限时报错
+- [ ] 单元测试覆盖率 ≥ 70%
 
-### 7.4 Phase 3: Pipeline 前端与集成 (3 周)
+---
 
-**目标**：实现 Pipeline 前端全部组件，与后端联调。
+### 7.4 Phase 3: Pipeline 前端与集成（4周）
 
-| 任务 | 详情 | 产出 |
-|------|------|------|
-| P3.1 | CaseListView 页面（案例列表 + 筛选/搜索） | `views/CaseListView.vue` |
-| P3.2 | CaseDetailView 页面（三栏布局骨架） | `views/CaseDetailView.vue` |
-| P3.3 | PipelineView 组件（5 阶段可视化） | `components/pipeline/PipelineView.vue` |
-| P3.4 | StageNode 组件 | `components/pipeline/StageNode.vue` |
-| P3.5 | HumanGate 组件 | `components/pipeline/HumanGate.vue` |
-| P3.6 | ReviewPanel 组件（审核决策面板） | `components/review/ReviewPanel.vue` |
-| P3.7 | ReviewFinding 组件 | `components/review/ReviewFinding.vue` |
-| P3.8 | DiffViewer 组件（Monaco Diff） | `components/review/DiffViewer.vue` |
-| P3.9 | ContributionCard 组件 | `components/exploration/ContributionCard.vue` |
-| P3.10 | EvidenceChain 组件 | `components/exploration/EvidenceChain.vue` |
-| P3.11 | ExecutionPlanTree 组件 | `components/planning/ExecutionPlanTree.vue` |
-| P3.12 | TestResultSummary 组件 | `components/testing/TestResultSummary.vue` |
-| P3.13 | TestLogViewer 组件 | `components/testing/TestLogViewer.vue` |
-| P3.14 | AgentEventLog 组件 | `components/shared/AgentEventLog.vue` |
-| P3.15 | useCaseEvents composable（SSE 管理） | `composables/useCaseEvents.ts` |
-| P3.16 | usePipeline composable | `composables/usePipeline.ts` |
-| P3.17 | useReview composable | `composables/useReview.ts` |
-| P3.18 | cases.ts API 客户端 | `api/cases.ts` |
-| P3.19 | reviews.ts API 客户端 | `api/reviews.ts` |
-| P3.20 | artifacts.ts API 客户端 | `api/artifacts.ts` |
-| P3.21 | 前端与后端联调 | 端到端流程打通 |
-| P3.22 | E2E 测试：创建案例 → 启动 Pipeline → 审核通过 → 完成 | Playwright 测试 |
+**目标**: 实现 Pipeline 前端全部组件，与后端联调
 
-**验收标准**：
+#### Week 9: 基础组件
+
+| 任务 ID | 任务 | 详情 | 产出 | 阻塞项 |
+|---------|------|------|------|--------|
+| P3.1 | CaseListView | 案例列表 + 筛选/搜索 | `views/CaseListView.vue` | P1.4 |
+| P3.2 | CaseDetailView 骨架 | 三栏布局（左/中/右） | `views/CaseDetailView.vue` | P3.1 |
+| P3.3 | PipelineView | 5 阶段流水线可视化 | `components/pipeline/PipelineView.vue` | P3.2 |
+| P3.4 | StageNode | 单阶段节点组件 | `components/pipeline/StageNode.vue` | P3.3 |
+| P3.5 | useCaseEvents | SSE 事件流管理 composable | `composables/useCaseEvents.ts` | 无 |
+
+#### Week 10: 审核组件
+
+| 任务 ID | 任务 | 详情 | 产出 | 阻塞项 |
+|---------|------|------|------|--------|
+| P3.6 | HumanGate | 人工审核门禁 UI | `components/pipeline/HumanGate.vue` | P3.5 |
+| P3.7 | ReviewPanel | 审核决策面板 | `components/review/ReviewPanel.vue` | P3.6 |
+| P3.8 | ReviewFinding | 单条审核发现 | `components/review/ReviewFinding.vue` | P3.7 |
+| P3.9 | DiffViewer | Monaco Diff 查看器 | `components/review/DiffViewer.vue` | P3.8 |
+| P3.10 | ReviewHistory | 历史审核记录 | `components/review/ReviewHistory.vue` | P3.7 |
+
+#### Week 11: 阶段展示组件
+
+| 任务 ID | 任务 | 详情 | 产出 | 阻塞项 |
+|---------|------|------|------|--------|
+| P3.11 | ContributionCard | 探索结果卡片 | `components/exploration/ContributionCard.vue` | P3.2 |
+| P3.12 | EvidenceChain | 证据链展示 | `components/exploration/EvidenceChain.vue` | P3.11 |
+| P3.13 | ExecutionPlanTree | 执行计划树 | `components/planning/ExecutionPlanTree.vue` | P3.2 |
+| P3.14 | TestResultSummary | 测试结果摘要 | `components/testing/TestResultSummary.vue` | P3.2 |
+| P3.15 | AgentEventLog | 实时事件日志 | `components/shared/AgentEventLog.vue` | P3.5 |
+
+#### Week 12: API 集成与测试
+
+| 任务 ID | 任务 | 详情 | 产出 | 阻塞项 |
+|---------|------|------|------|--------|
+| P3.16 | cases.ts API | API 客户端实现 | `api/cases.ts` | P2.19 |
+| P3.17 | reviews.ts API | 审核 API 客户端 | `api/reviews.ts` | P2.20 |
+| P3.18 | artifacts.ts API | 产物 API 客户端 | `api/artifacts.ts` | P2.21 |
+| P3.19 | 前后端联调 | 打通完整流程 | 可运行 Demo | P3.1-P3.18 |
+| P3.20 | E2E 测试 | 案例生命周期测试 | Playwright 测试 | P3.19 |
+
+**Phase 3 DoD**:
 - [ ] 可从前端创建案例并启动 Pipeline
 - [ ] Pipeline 可视化实时更新阶段状态
 - [ ] 人工审核面板在 pending 状态时正确显示
@@ -1211,137 +1367,678 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 - [ ] AgentEventLog 实时显示 Agent 执行过程
 - [ ] E2E 测试覆盖完整案例生命周期
 
-### 7.5 Phase 4: 高级功能 (2 周)
+---
 
-**目标**：QEMU 沙箱、安全加固、性能优化、监控。
+### 7.5 Phase 4: 集成测试与优化（3周）
 
-| 任务 | 详情 | 产出 |
-|------|------|------|
-| P4.1 | QEMU Sandbox Docker 镜像 | `sandbox-qemu/Dockerfile` |
-| P4.2 | Tester Agent 集成 QEMU | `pipeline/nodes/test.py` 更新 |
-| P4.3 | 确定性工具集成：checkpatch.pl | `pipeline/nodes/review.py` 更新 |
-| P4.4 | 确定性工具集成：sparse | `pipeline/nodes/review.py` 更新 |
-| P4.5 | Prompt 注入防护 | `security/prompt_guard.py` |
-| P4.6 | 速率限制中间件 | `middleware/rate_limit.py` |
-| P4.7 | 安全响应头中间件 | `middleware/security.py` |
-| P4.8 | 健康检查扩展 | `main.py` 更新 |
-| P4.9 | 统计 API 扩展：Pipeline 数据 | `route/statistics.py` 更新 |
-| P4.10 | TokenStatistics 扩展：Pipeline 成本 | `TokenStatistics.vue` 更新 |
-| P4.11 | 性能测试：API 基准 | `tests/perf/test_api.py` |
-| P4.12 | 性能测试：SSE 并发 | `tests/perf/test_sse.py` |
-| P4.13 | 文档完善：部署指南 | `docs/deployment-guide.md` |
-| P4.14 | 文档完善：API 文档 | 自动生成 OpenAPI 文档 |
+**目标**: 系统联调、性能优化、混沌测试、安全加固
 
-**验收标准**：
+#### Week 13: 集成与稳定性
+
+| 任务 ID | 任务 | 详情 | 产出 | 阻塞项 |
+|---------|------|------|------|--------|
+| P4.1 | 端到端联调 | Chat + Pipeline 双模式切换 | 完整系统 | P3.20 |
+| P4.2 | 性能基准测试 | API P99 < 500ms | 测试报告 | P4.1 |
+| P4.3 | SSE 压力测试 | 100 连接并发 | 测试报告 | P4.1 |
+| P4.4 | 内存泄漏检测 | 长时间运行稳定性 | 检测报告 | P4.1 |
+
+#### Week 14: 高级功能
+
+| 任务 ID | 任务 | 详情 | 产出 | 阻塞项 |
+|---------|------|------|------|--------|
+| P4.5 | QEMU Sandbox | Docker 镜像 + 集成 | `sandbox-qemu/` | P2.15 |
+| P4.6 | 确定性工具 | checkpatch.pl, sparse 集成 | `nodes/review.py` | P4.5 |
+| P4.7 | Prompt Guard | 注入检测 | `security/prompt_guard.py` | 无 |
+| P4.8 | 速率限制 | Redis 限流中间件 | `middleware/rate_limit.py` | 无 |
+
+#### Week 15: 混沌工程与安全
+
+| 任务 ID | 任务 | 详情 | 产出 | 阻塞项 |
+|---------|------|------|------|--------|
+| P4.9 | 故障注入测试 | 服务重启/网络中断恢复 | 测试报告 | P4.1 |
+| P4.10 | 安全扫描 | bandit, safety, npm audit | 扫描报告 | 无 |
+| P4.11 | 渗透测试 | OWASP Top 10 检查 | 测试报告 | P4.10 |
+| P4.12 | 数据备份恢复 | MongoDB/PostgreSQL 备份 | 脚本 + 测试 | 无 |
+
+**Phase 4 DoD**:
 - [ ] QEMU 沙箱可正确编译和运行 RISC-V 测试
 - [ ] checkpatch.pl 和 sparse 在 Review 阶段自动运行
 - [ ] API 速率限制生效
-- [ ] 安全头正确设置
+- [ ] 故障恢复测试通过（服务重启后 Pipeline 可恢复）
 - [ ] 性能测试通过（50 并发 API, 100 SSE 连接）
+- [ ] 安全扫描无高危漏洞
 
 ---
 
-## 8. 风险与缓解
+### 7.6 Phase 5: 生产准备（1周）
 
-| 风险 | 概率 | 影响 | 缓解措施 |
-|------|------|------|----------|
-| ScienceClaw 代码变更导致迁移冲突 | 高 | 高 | 尽早锁定 ScienceClaw 版本；迁移脚本自动化；建立回归测试基线 |
-| Claude Agent SDK Breaking Change | 高 | 高 | 适配器层隔离；版本锁定；fallback 到直接 API 调用 |
-| LangGraph 0.3 → 0.4 API 变更 | 中 | 高 | 版本锁定 `<0.4.0`；关注 changelog |
-| Pipeline 前端复杂度超预期 | 中 | 中 | 分阶段交付；MVP 先实现核心 CaseDetailView；复杂可视化延后 |
-| QEMU 沙箱环境搭建困难 | 中 | 高 | 提前验证交叉编译工具链；准备预构建镜像 |
-| OpenAI Codex 模型不可用 | 中 | 高 | Reviewer 支持模型降级链：codex-mini → gpt-4o → claude-sonnet |
-| MongoDB 与 PostgreSQL 双数据库运维复杂度 | 低 | 中 | MongoDB 存业务，PostgreSQL 仅存 checkpointer；文档明确分工 |
-| SSE 长连接在 Nginx 反向代理下异常 | 中 | 中 | 严格按 design.md §7.2 配置 Nginx SSE；充分测试重连恢复 |
-| RISC-V 领域知识不足导致 Agent Prompt 效果差 | 中 | 高 | Prompt 工程单独迭代；建立评估数据集；预留 Prompt 回归测试 |
+**目标**: 文档完善、部署验证、培训
+
+| 任务 ID | 任务 | 详情 | 产出 |
+|---------|------|------|------|
+| P5.1 | 部署文档 | 完整部署指南 | `docs/deployment-guide.md` |
+| P5.2 | API 文档 | OpenAPI 自动生成 | Swagger UI |
+| P5.3 | 运维手册 | 监控/告警/故障处理 | `docs/operations.md` |
+| P5.4 | 用户手册 | 最终用户指南 | `docs/user-guide.md` |
+| P5.5 | 生产环境部署 | 真实环境验证 | 生产可用系统 |
+| P5.6 | 团队培训 | 使用与运维培训 | 培训完成 |
+
+**Phase 5 DoD**:
+- [ ] 生产环境部署成功
+- [ ] 所有文档完备
+- [ ] 团队培训完成
+- [ ] 上线检查清单全部通过
 
 ---
 
-## 9. 验收标准
+## 8. 测试策略
 
-### 9.1 功能验收
+### 8.1 测试金字塔
 
-| 验收项 | 标准 | 验证方式 |
-|--------|------|----------|
-| Chat 模式完整性 | ScienceClaw 所有功能 100% 可用 | E2E 测试通过 |
-| Pipeline 创建与启动 | 可创建案例并启动 5 阶段 Pipeline | API + E2E 测试 |
-| 人工审核门禁 | 每阶段完成后暂停，审核后正确前进/回退 | E2E 测试 |
-| Develop↔Review 迭代 | 最多 3 轮迭代，收敛检测正确 | 单元测试 + E2E |
-| SSE 实时通信 | 事件按序到达，断线重连无丢失 | 性能测试 |
-| 产物管理 | 补丁/日志/报告正确存储和下载 | API 测试 |
-| RBAC | admin/user 权限区分正确 | 单元测试 |
-| QEMU 测试 | 可在沙箱中编译运行 RISC-V 测试 | 集成测试 |
+```
+                    ┌─────────┐
+                    │  E2E    │  ← 20 个场景，覆盖核心用户旅程
+                    │  (10%)  │
+                   ├───────────┤
+                   │ Integration│ ← API 集成测试，边界情况
+                   │   (20%)   │
+                  ├─────────────┤
+                  │    Unit      │ ← 业务逻辑、工具函数、路由决策
+                  │   (70%)     │
+                 └───────────────┘
+```
 
-### 9.2 性能验收
+---
+
+### 8.2 测试分层详情
+
+#### 单元测试（pytest）
+
+| 模块 | 测试文件 | 覆盖目标 | 关键用例 |
+|------|----------|----------|----------|
+| Pipeline 路由 | `test_route_review.py` | 90% | 迭代收敛、escalate 触发 |
+| Pipeline 路由 | `test_route_human.py` | 90% | approve/reject/abandon 路由 |
+| 数据契约 | `test_contracts.py` | 95% | Pydantic 验证、序列化 |
+| CostGuard | `test_cost_guard.py` | 85% | 熔断触发、成本累加 |
+| ArtifactManager | `test_artifact_manager.py` | 80% | 文件存储/读取/清理 |
+| EventPublisher | `test_event_publisher.py` | 75% | 事件发布/订阅/恢复 |
+
+**示例单元测试**:
+```python
+# tests/unit/pipeline/test_route_review.py
+import pytest
+from backend.pipeline.routes import route_review_decision
+from backend.pipeline.state import PipelineState
+
+class TestRouteReviewDecision:
+    """Review 路由决策单元测试"""
+
+    def test_approve_when_verdict_approved(self):
+        state = PipelineState(
+            case_id="test",
+            target_repo="linux",
+            review_verdict={"approved": True, "findings": []},
+            review_iterations=1,
+        )
+        assert route_review_decision(state) == "approve"
+
+    def test_escalate_when_max_iterations_reached(self):
+        state = PipelineState(
+            case_id="test",
+            target_repo="linux",
+            review_verdict={"approved": False, "findings": [{"severity": "major"}]},
+            review_iterations=3,
+            max_review_iterations=3,
+        )
+        assert route_review_decision(state) == "escalate"
+
+    def test_escalate_when_not_converging(self):
+        """连续 2 轮评分不下降则 escalate"""
+        state = PipelineState(
+            case_id="test",
+            target_repo="linux",
+            review_verdict={"approved": False, "findings": [
+                {"severity": "major", "file": "a.c", "line": 10}
+            ]},
+            review_iterations=2,
+            review_history=[
+                {"findings": [{"severity": "major", "file": "a.c", "line": 10}]}
+            ]
+        )
+        assert route_review_decision(state) == "escalate"
+```
+
+#### 集成测试（pytest + testcontainers）
+
+| 场景 | 测试文件 | 说明 |
+|------|----------|------|
+| Pipeline 完整流程 | `test_pipeline_flow.py` | 创建→启动→审核→完成 |
+| 人工审核门禁 | `test_human_gate.py` | interrupt/resume 流程 |
+| Develop↔Review 迭代 | `test_review_iteration.py` | 3 轮迭代 → escalate |
+| 检查点恢复 | `test_checkpoint_recovery.py` | 中断后恢复 Pipeline |
+| SSE 事件流 | `test_sse_events.py` | 事件顺序、重连恢复 |
+| 产物管理 | `test_artifact_lifecycle.py` | 上传/下载/清理 |
+
+**示例集成测试**:
+```python
+# tests/integration/test_pipeline_flow.py
+import pytest
+from testcontainers.mongodb import MongoDbContainer
+from testcontainers.postgres import PostgresContainer
+
+@pytest.fixture(scope="module")
+async def app():
+    with MongoDbContainer("mongo:7.0") as mongo, \
+         PostgresContainer("postgres:16-alpine") as pg:
+        app = create_app(
+            mongo_uri=mongo.get_connection_url(),
+            postgres_uri=pg.get_connection_url(),
+        )
+        yield app
+
+class TestPipelineFlow:
+    async def test_create_and_start_pipeline(self, client):
+        # 创建案例
+        resp = await client.post("/api/v1/cases", json={
+            "title": "Test Zicfiss support",
+            "target_repo": "linux",
+            "input_context": {"hint": "Add Zicfiss"}
+        })
+        assert resp.status_code == 201
+        case_id = resp.json()["data"]["id"]
+
+        # 启动 Pipeline
+        resp = await client.post(f"/api/v1/cases/{case_id}/start")
+        assert resp.status_code == 200
+
+        # 验证状态变为 exploring
+        resp = await client.get(f"/api/v1/cases/{case_id}")
+        assert resp.json()["data"]["status"] == "exploring"
+```
+
+#### E2E 测试（Playwright）
+
+| 场景 | 测试文件 | 步骤 |
+|------|----------|------|
+| 完整案例生命周期 | `test_case_lifecycle.spec.ts` | 创建→启动→审核→完成 |
+| Chat 对话 | `test_chat.spec.ts` | 登录→新建会话→聊天 |
+| 文件管理 | `test_file_management.spec.ts` | 上传→预览→下载 |
+| 设置修改 | `test_settings.spec.ts` | 修改模型→保存→验证 |
+| 错误处理 | `test_error_handling.spec.ts` | 网络中断→恢复→继续 |
+
+**示例 E2E 测试**:
+```typescript
+// tests/e2e/test_case_lifecycle.spec.ts
+import { test, expect } from '@playwright/test';
+
+test('完整案例生命周期', async ({ page }) => {
+  // 登录
+  await page.goto('/login');
+  await page.fill('[data-testid="username"]', 'admin');
+  await page.fill('[data-testid="password"]', 'admin123');
+  await page.click('[data-testid="login-btn"]');
+  await page.waitForURL('**/');
+
+  // 创建案例
+  await page.click('[data-testid="new-case-btn"]');
+  await page.fill('[data-testid="case-title"]', 'E2E Test Case');
+  await page.fill('[data-testid="target-repo"]', 'linux');
+  await page.fill('[data-testid="input-context"]', 'Test context');
+  await page.click('[data-testid="submit-case-btn"]');
+
+  // 验证案例创建成功
+  await page.waitForURL('**/cases/**');
+  await expect(page.locator('[data-testid="case-status"]')).toHaveText('created');
+
+  // 启动 Pipeline
+  await page.click('[data-testid="start-pipeline-btn"]');
+  await expect(page.locator('[data-testid="stage-explore"]')).toHaveClass(/active/);
+
+  // 等待探索完成，提交审核
+  await page.waitForSelector('[data-testid="review-panel"]', { timeout: 120000 });
+  await page.fill('[data-testid="review-comment"]', 'Looks good');
+  await page.click('[data-testid="approve-btn"]');
+
+  // 验证进入 planning 阶段
+  await expect(page.locator('[data-testid="stage-plan"]')).toHaveClass(/active/);
+});
+```
+
+#### 混沌测试（Chaos Mesh / 手动）
+
+| 故障场景 | 测试方法 | 期望结果 |
+|----------|----------|----------|
+| 后端重启 | `docker restart backend` | Pipeline 从 checkpointer 恢复 |
+| MongoDB 中断 | `docker stop mongodb` | 优雅降级，返回 503 |
+| Redis 中断 | `docker stop redis` | SSE 降级为轮询 |
+| 网络延迟 | `tc qdisc add dev eth0 delay 500ms` | 超时重试正常 |
+| 高并发 | `locust -f load_test.py -u 100` | 无死锁，响应时间可接受 |
+
+### 8.3 回归测试策略
+
+```bash
+# 在迁移前建立基线
+cd ScienceClaw
+pytest tests/e2e/ --generate-baseline=baseline-v1.json
+
+# 迁移后对比
+cd rv-claw
+pytest tests/e2e/ --compare-baseline=baseline-v1.json --threshold=95
+```
+
+---
+
+## 9. 监控与可观测性
+
+### 9.1 三大支柱
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     可观测性三大支柱                              │
+├─────────────────┬─────────────────┬─────────────────────────────┤
+│    Metrics      │      Logs       │         Tracing             │
+│    (指标)        │     (日志)       │         (追踪)              │
+├─────────────────┼─────────────────┼─────────────────────────────┤
+│ • Prometheus    │ • structlog     │ • OpenTelemetry             │
+│ • Grafana       │ • JSON 结构化   │ • LangGraph 自带 trace      │
+│ • 业务指标       │ • 日志级别动态   │ • 分布式追踪                 │
+│ • 系统指标       │ • 日志采样      │ • 性能热点分析               │
+└─────────────────┴─────────────────┴─────────────────────────────┘
+```
+
+---
+
+### 9.2 业务指标（Prometheus）
+
+```python
+# backend/metrics/pipeline.py
+from prometheus_client import Counter, Histogram, Gauge
+
+# Pipeline 业务指标
+PIPELINE_CREATED = Counter(
+    'rv_pipeline_created_total',
+    'Total cases created',
+    ['contribution_type', 'target_repo']
+)
+
+PIPELINE_COMPLETED = Counter(
+    'rv_pipeline_completed_total',
+    'Total cases completed',
+    ['status', 'contribution_type']
+)
+
+STAGE_DURATION = Histogram(
+    'rv_stage_duration_seconds',
+    'Time spent in each stage',
+    ['stage'],
+    buckets=[60, 300, 600, 1800, 3600, 7200]  # 1m, 5m, 10m, 30m, 1h, 2h
+)
+
+REVIEW_ITERATIONS = Histogram(
+    'rv_review_iterations',
+    'Number of review iterations',
+    buckets=[1, 2, 3, 4]
+)
+
+COST_USD = Histogram(
+    'rv_cost_usd',
+    'Pipeline cost in USD',
+    ['stage'],
+    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0]
+)
+
+ACTIVE_PIPELINES = Gauge(
+    'rv_active_pipelines',
+    'Number of active pipelines',
+    ['stage']
+)
+
+# 在代码中使用
+@router.post("/cases/{case_id}/start")
+async def start_pipeline(case_id: str):
+    PIPELINE_CREATED.inc()
+    ACTIVE_PIPELINES.inc()
+    # ... 启动逻辑
+```
+
+---
+
+### 9.3 日志规范（structlog）
+
+```python
+# backend/logging_config.py
+import structlog
+import logging
+
+structlog.configure(
+    processors=[
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.stdlib.filter_by_level,
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.JSONRenderer()
+    ],
+    wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
+    context_class=dict,
+    logger_factory=structlog.PrintLoggerFactory(),
+)
+
+# 使用示例
+logger = structlog.get_logger()
+
+async def explore_node(state: PipelineState):
+    logger.info(
+        "stage_started",
+        case_id=state["case_id"],
+        stage="explore",
+        target_repo=state["target_repo"],
+        iteration=state["review_iterations"],
+    )
+
+    try:
+        # ... 执行逻辑
+        logger.info(
+            "stage_completed",
+            case_id=state["case_id"],
+            stage="explore",
+            duration_seconds=elapsed,
+            input_tokens=result.input_tokens,
+            output_tokens=result.output_tokens,
+            cost_usd=result.cost_usd,
+        )
+    except Exception as e:
+        logger.error(
+            "stage_failed",
+            case_id=state["case_id"],
+            stage="explore",
+            error=str(e),
+            error_type=type(e).__name__,
+            exc_info=True,
+        )
+        raise
+```
+
+---
+
+### 9.4 关键告警规则
+
+```yaml
+# prometheus/alerts.yml
+groups:
+  - name: rv-claw-pipeline
+    rules:
+      # Pipeline 卡住
+      - alert: PipelineStuck
+        expr: |
+          time() - rv_stage_last_activity_seconds > 1800
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pipeline {{ $labels.case_id }} stuck in {{ $labels.stage }}"
+
+      # 成本异常
+      - alert: HighPipelineCost
+        expr: |
+          rv_cost_usd_bucket{le="10.0"} > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pipeline cost exceeded $10"
+
+      # Agent 失败率高
+      - alert: HighAgentFailureRate
+        expr: |
+          rate(rv_agent_errors_total[5m]) / rate(rv_agent_calls_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Agent failure rate > 10%"
+
+      # 后端错误率高
+      - alert: HighErrorRate
+        expr: |
+          rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend 5xx rate > 5%"
+
+      # 数据库连接池耗尽
+      - alert: DatabasePoolExhausted
+        expr: |
+          mongodb_connections{state="available"} < 5
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MongoDB connection pool nearly exhausted"
+```
+
+---
+
+## 10. 风险与缓解
+
+### 10.1 风险矩阵
+
+| 风险 | 概率 | 影响 | 风险值 | 优先级 |
+|------|------|------|--------|--------|
+| ScienceClaw 代码变更导致迁移冲突 | 高 | 高 | 🔴 高 | P0 |
+| Claude Agent SDK Breaking Change | 高 | 高 | 🔴 高 | P0 |
+| Pipeline 前端复杂度超预期 | 中 | 中 | 🟡 中 | P1 |
+| LangGraph 0.3→0.4 API 变更 | 中 | 高 | 🟡 中 | P1 |
+| QEMU 沙箱环境搭建困难 | 中 | 高 | 🟡 中 | P1 |
+| OpenAI Codex 模型不可用 | 中 | 高 | 🟡 中 | P1 |
+| SSE 长连接在 Nginx 下异常 | 中 | 中 | 🟡 中 | P1 |
+| RISC-V 领域知识不足 | 中 | 高 | 🟡 中 | P2 |
+| MongoDB 与 PG 双库运维 | 低 | 中 | 🟢 低 | P2 |
+
+---
+
+### 10.2 详细缓解措施
+
+#### 风险 1: ScienceClaw 代码变更
+
+**描述**: ScienceClaw 上游持续更新，导致迁移代码冲突
+
+**缓解措施**:
+1. **版本锁定**: 在 `P0.1` 时锁定 ScienceClaw commit hash
+2. **抽象层**: 创建 `scienceclaw-compat/` 目录，封装所有移植代码
+3. **自动化脚本**: 编写 `scripts/sync-scienceclaw.sh` 自动检测变更
+4. **回归测试**: 每次 ScienceClaw 更新后运行全量回归测试
+
+**应急方案**:
+- 如果冲突过多，fork ScienceClaw 并维护稳定分支
+- 优先保证 rv-claw 功能，延迟同步非关键更新
+
+#### 风险 2: Claude Agent SDK Breaking Change
+
+**描述**: SDK 尚处 Beta，API 可能大幅变更
+
+**缓解措施**:
+1. **适配器隔离**: 所有 SDK 调用通过 `adapters/claude_adapter.py`
+2. **版本锁定**: `requirements.txt` 严格锁定 `claude-agent-sdk>=0.1.0,<0.2.0`
+3. **功能降级**: 如果 SDK 不可用，降级到直接 Anthropic API 调用
+4. **抽象接口**: `AgentAdapter` 基类确保可切换实现
+
+**降级代码**:
+```python
+# adapters/claude_fallback.py
+class ClaudeFallbackAdapter(AgentAdapter):
+    """SDK 不可用时，直接调用 Anthropic API"""
+
+    async def execute(self, prompt, context, working_dir=None):
+        client = anthropic.Anthropic()
+        async with client.messages.stream(
+            model="claude-3-sonnet-20240229",
+            messages=[{"role": "user", "content": prompt}],
+        ) as stream:
+            async for text in stream.text_stream:
+                yield AgentEvent(event_type="output", data={"content": text})
+```
+
+#### 风险 3: Pipeline 前端复杂度
+
+**描述**: Pipeline 可视化组件可能比预期复杂
+
+**缓解措施**:
+1. **MVP 简化**: Phase 3 先用简单列表代替复杂可视化
+2. **组件复用**: 优先复用 ScienceClaw 的 `ActivityPanel`, `ProcessMessage`
+3. **增量交付**: Week 9 完成骨架，Week 10-11 逐步丰富
+4. **设计评审**: Week 9 结束进行设计评审，必要时简化
+
+**简化方案**:
+```
+Plan A (完整): PipelineView → StageNode → StageConnector → Animation
+Plan B (简化): ListView → StatusBadge → ProgressBar
+Plan C (极简): TextLog → 纯文本展示阶段状态
+```
+
+#### 风险 4: LangGraph API 变更
+
+**描述**: LangGraph 0.4 可能引入 Breaking Change
+
+**缓解措施**:
+1. **版本锁定**: `requirements.txt` 锁定 `langgraph>=0.3.0,<0.4.0`
+2. **封装层**: 所有 LangGraph 调用通过 `pipeline/graph.py`
+3. **单元测试**: 路由函数独立测试，不依赖 LangGraph 内部
+4. **关注社区**: 订阅 LangGraph changelog，提前评估影响
+
+---
+
+## 11. 验收标准
+
+### 11.1 功能验收
+
+| 模块 | 验收项 | 通过标准 | 验证方式 |
+|------|--------|----------|----------|
+| Chat | 多轮对话 | 支持 10 轮以上上下文 | E2E 测试 |
+| Chat | 文件上传 | 支持 10MB 文件 | 手动测试 |
+| Chat | SSE 流式 | 延迟 < 1s | 性能测试 |
+| Pipeline | 创建案例 | 必填字段验证 | 单元测试 |
+| Pipeline | 5 阶段执行 | 阶段正确流转 | E2E 测试 |
+| Pipeline | 人工审核 | 可暂停/恢复 | E2E 测试 |
+| Pipeline | 3 轮迭代 | 收敛检测正确 | 单元测试 |
+| Pipeline | 产物管理 | 文件正确存储 | 集成测试 |
+| 系统 | RBAC | admin/user 权限区分 | 单元测试 |
+| 系统 | 并发 | 5 Pipeline 同时运行 | 压力测试 |
+
+---
+
+### 11.2 性能验收
 
 | 指标 | 目标 | 测试方法 |
 |------|------|----------|
-| API P99 响应时间 | < 500ms | locust / pytest |
-| SSE 并发连接 | 100 连接稳定 | 压力测试 |
-| Pipeline 并发执行 | 5 个 Pipeline 同时运行无死锁 | 集成测试 |
-| 前端首屏加载 | < 2s (Desktop) | Lighthouse |
-
-### 9.3 质量验收
-
-| 指标 | 目标 |
-|------|------|
-| 单元测试覆盖率 | ≥ 85% (backend) |
-| E2E 测试通过率 | 100% |
-| 类型检查 | mypy --strict 通过 |
-| 代码风格 | ruff check 通过 |
-| 安全扫描 | bandit 无高危漏洞 |
+| API P99 | < 500ms | locust -u 50 -r 10 |
+| SSE 延迟 | < 1s | WebSocket 测试工具 |
+| 前端首屏 | < 2s | Lighthouse |
+| 并发 Pipeline | 5 个无死锁 | 手动测试 |
+| 内存使用 | < 4GB | docker stats |
 
 ---
 
-## 附录 A: ScienceClaw → rv-claw 文件映射
+### 11.3 质量验收
+
+| 指标 | 目标 | 工具 |
+|------|------|------|
+| 单元测试覆盖率 | ≥ 85% | pytest-cov |
+| E2E 测试通过率 | 100% | Playwright |
+| 类型检查 | 0 errors | mypy --strict |
+| 代码风格 | 0 warnings | ruff |
+| 安全扫描 | 0 high | bandit, safety |
+
+---
+
+## 附录 A: 术语表
+
+| 术语 | 说明 |
+|------|------|
+| Case | 贡献案例，Pipeline 的执行单元 |
+| Pipeline | 5 阶段 Agent 流水线 |
+| Stage | Pipeline 中的单个阶段（Explore/Plan/Develop/Review/Test） |
+| Human Gate | 人工审核门禁，Pipeline 暂停等待人工决策 |
+| Iteration | Develop ↔ Review 的一轮迭代 |
+| Escalation | 迭代次数超限后升级为人工处理 |
+| Artifact | Agent 产物（补丁、日志、报告等） |
+| Evidence | 支撑贡献机会的证据项 |
+| Verdict | 审核 Agent 的审核结论 |
+| Checkpoint | LangGraph 状态快照，用于中断恢复 |
+| SSE | Server-Sent Events，服务端推送 |
+| Composable | Vue 3 组合式函数 |
+| Adapter | 适配器模式，隔离 SDK 差异 |
+
+---
+
+## 附录 B: 参考文档
+
+| 文档 | 路径 | 说明 |
+|------|------|------|
+| design.md | `tasks/design.md` | 架构设计权威来源 |
+| mvp-tasks.md | `tasks/mvp-tasks.md` | 详细任务清单 |
+| migration-map.md | `tasks/migration-map.md` | 组件迁移映射 |
+| chat-architecture.md | `tasks/chat-architecture.md` | Chat 后端架构 |
+| sse-protocol.md | `tasks/sse-protocol.md` | SSE 协议规范 |
+| api-contracts.md | `tasks/api-contracts.md` | API 契约 |
+| error-codes.md | `tasks/error-codes.md` | 错误码定义 |
+| conventions.md | `tasks/conventions.md` | 开发规范 |
+| openapi.yaml | `docs/openapi.yaml` | OpenAPI 定义 |
+
+---
+
+## 附录 C: ScienceClaw → rv-claw 文件映射
 
 ### 前端文件映射
 
 | ScienceClaw 路径 | rv-claw 路径 | 操作 |
 |-----------------|-------------|------|
-| `src/pages/MainLayout.vue` | `src/pages/MainLayout.vue` | 保留，扩展导航 |
-| `src/pages/HomePage.vue` | `src/pages/HomePage.vue` | 保留 |
-| `src/pages/ChatPage.vue` | `src/pages/ChatPage.vue` | 保留 |
-| `src/pages/LoginPage.vue` | `src/pages/LoginPage.vue` | 保留 |
-| `src/pages/Tasks*.vue` | `src/pages/Tasks*.vue` | 保留 |
-| `src/pages/ToolsPage.vue` | `src/pages/ToolsPage.vue` | 保留 |
-| `src/pages/SkillsPage.vue` | `src/pages/SkillsPage.vue` | 保留 |
-| `src/pages/Share*.vue` | `src/pages/Share*.vue` | 保留 |
-| N/A | `src/views/CaseListView.vue` | 新增 |
-| N/A | `src/views/CaseDetailView.vue` | 新增 |
-| N/A | `src/views/StatisticsPage.vue` | 新增（替换 MetricsView） |
-| `src/components/*.vue` | `src/components/*.vue` | 大部分保留 |
-| N/A | `src/components/pipeline/*.vue` | 新增 |
-| N/A | `src/components/review/*.vue` | 新增 |
-| N/A | `src/components/exploration/*.vue` | 新增 |
-| N/A | `src/components/planning/*.vue` | 新增 |
-| N/A | `src/components/testing/*.vue` | 新增 |
-| N/A | `src/components/shared/*.vue` | 新增 |
-| `src/api/*.ts` | `src/api/*.ts` | 保留，新增 cases/reviews/artifacts |
-| `src/composables/*.ts` (含状态) | `src/composables/*.ts` | 保留，新增 useCaseStore/usePipelineStore/useReviewStore |
-| `src/composables/*.ts` | `src/composables/*.ts` | 保留，新增 useCaseEvents/usePipeline/useReview |
-| `src/types/*.ts` | `src/types/*.ts` | 保留，新增 case/pipeline/event/artifact/review |
+| `src/pages/MainLayout.vue` | `ScienceClaw/frontend/src/pages/MainLayout.vue` | 保留，扩展导航 |
+| `src/pages/HomePage.vue` | `ScienceClaw/frontend/src/pages/HomePage.vue` | 保留 |
+| `src/pages/ChatPage.vue` | `ScienceClaw/frontend/src/pages/ChatPage.vue` | 保留 |
+| `src/pages/LoginPage.vue` | `ScienceClaw/frontend/src/pages/LoginPage.vue` | 保留 |
+| `src/pages/Tasks*.vue` | `ScienceClaw/frontend/src/pages/Tasks*.vue` | 保留 |
+| `src/pages/ToolsPage.vue` | `ScienceClaw/frontend/src/pages/ToolsPage.vue` | 保留 |
+| `src/pages/SkillsPage.vue` | `ScienceClaw/frontend/src/pages/SkillsPage.vue` | 保留 |
+| `src/pages/Share*.vue` | `ScienceClaw/frontend/src/pages/Share*.vue` | 保留 |
+| N/A | `ScienceClaw/frontend/src/views/CaseListView.vue` | 新增 |
+| N/A | `ScienceClaw/frontend/src/views/CaseDetailView.vue` | 新增 |
+| N/A | `ScienceClaw/frontend/src/views/StatisticsPage.vue` | 新增（替换 MetricsView） |
+| `src/components/*.vue` | `ScienceClaw/frontend/src/components/*.vue` | 大部分保留 |
+| N/A | `ScienceClaw/frontend/src/components/pipeline/*.vue` | 新增 |
+| N/A | `ScienceClaw/frontend/src/components/review/*.vue` | 新增 |
+| N/A | `ScienceClaw/frontend/src/components/exploration/*.vue` | 新增 |
+| N/A | `ScienceClaw/frontend/src/components/planning/*.vue` | 新增 |
+| N/A | `ScienceClaw/frontend/src/components/testing/*.vue` | 新增 |
+| N/A | `ScienceClaw/frontend/src/components/shared/*.vue` | 新增 |
+| `src/api/*.ts` | `ScienceClaw/frontend/src/api/*.ts` | 保留，新增 cases/reviews/artifacts |
+| `src/composables/*.ts` (含状态) | `ScienceClaw/frontend/src/composables/*.ts` | 保留，新增 useCaseStore/usePipelineStore/useReviewStore |
+| `src/composables/*.ts` | `ScienceClaw/frontend/src/composables/*.ts` | 保留，新增 useCaseEvents/usePipeline/useReview |
+| `src/types/*.ts` | `ScienceClaw/frontend/src/types/*.ts` | 保留，新增 case/pipeline/event/artifact/review |
 
 ### 后端文件映射
 
 | ScienceClaw 路径 | rv-claw 路径 | 操作 |
 |-----------------|-------------|------|
-| `backend/main.py` | `backend/main.py` | 扩展：注册新路由 |
-| `backend/route/*.py` | `backend/route/*.py` | 保留，新增 cases/reviews/artifacts/pipeline |
-| `backend/deepagent/` | `backend/deepagent/` | 保留（Chat 引擎） |
-| N/A | `backend/pipeline/` | 新增（Pipeline 引擎） |
-| N/A | `backend/adapters/` | 新增 |
-| N/A | `backend/contracts/` | 新增 |
-| N/A | `backend/datasources/` | 新增 |
-| `backend/mongodb/` | `backend/mongodb/` | 保留，扩展索引 |
-| `backend/user/` | `backend/user/` | 保留，扩展 role |
-| `backend/im/` | `backend/im/` | 保留 |
-| `backend/builtin_skills/` | `backend/builtin_skills/` | 保留 |
-| `backend/models.py` | `backend/models.py` | 保留 |
+| `backend/main.py` | `ScienceClaw/backend/main.py` | 扩展：注册新路由 |
+| `backend/route/*.py` | `ScienceClaw/backend/route/*.py` | 保留，新增 cases/reviews/artifacts/pipeline |
+| `backend/deepagent/` | `ScienceClaw/backend/deepagent/` | 保留（Chat 引擎） |
+| N/A | `ScienceClaw/backend/pipeline/` | 新增（Pipeline 引擎） |
+| N/A | `ScienceClaw/backend/adapters/` | 新增 |
+| N/A | `ScienceClaw/backend/contracts/` | 新增 |
+| N/A | `ScienceClaw/backend/datasources/` | 新增 |
+| `backend/mongodb/` | `ScienceClaw/backend/mongodb/` | 保留，扩展索引 |
+| `backend/user/` | `ScienceClaw/backend/user/` | 保留，扩展 role |
+| `backend/im/` | `ScienceClaw/backend/im/` | 保留 |
+| `backend/builtin_skills/` | `ScienceClaw/backend/builtin_skills/` | 保留 |
+| `backend/models.py` | `ScienceClaw/backend/models.py` | 保留 |
 
 ---
 
-## 附录 B: 关键依赖版本锁定
+## 附录 D: 关键依赖版本锁定
 
 | 包名 | 版本 | 说明 |
 |------|------|------|
@@ -1361,4 +2058,9 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 ---
 
-*本文档为 rv-claw 项目重构的权威计划，所有开发工作应以此为准。*
+*本文档为 rv-claw 项目重构的权威计划（整合版 v3.0），所有开发工作应以此为准。*
+
+**文档历史**:
+- v1.0 (2026-04-29): 初始版本 (refactor-plan.md)
+- v2.0 (2026-04-29): 优化版，补充实施细节 (refactor-plan-v2.md)
+- v3.0 (2026-04-29): 整合版，融合 design.md 权威架构 + 实际代码库分析，修正文件路径，补充完整模块清单
