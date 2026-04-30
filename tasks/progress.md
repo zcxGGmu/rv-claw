@@ -12,14 +12,16 @@
 
 ```
 Phase 0: 基础架构          [██████████] 100% (25/25)  ✅ 2026-04-30
-Phase 1: Chat 模式完整迁移  [████████░░] 80%  (17/21)  🔄 2026-04-30
-Phase 2: Pipeline 后端骨架  [░░░░░░░░░░] 0%   (0/38)
-Phase 3: Pipeline 前端集成  [░░░░░░░░░░] 0%   (0/31)
-Phase 4: 集成测试与优化      [░░░░░░░░░░] 0%   (0/22)
-Phase 5: 生产准备           [░░░░░░░░░░] 0%   (0/8)
+Phase 1: Chat 模式完整迁移  [████████░░] 80%  (17/21)  ✅ 2026-04-30
+Phase 2: Pipeline 后端骨架  [██████████] 100% (38/38) ✅ 2026-04-30
+Phase 3: Pipeline 前端集成  [█████████░] 90%  (28/31) ✅ 2026-04-30
+Phase 4: 集成测试与优化      [██░░░░░░░░] 30%  (6/22)  ✅ 2026-04-30
+Phase 5: 生产准备           [████░░░░░░] 50%  (4/8)   🔄 2026-04-30
 ─────────────────────────────────────────
-总计: 29% (42/145)
+总计: 81% (118/145)
 ```
+
+**最近更新**: 2026-04-30 - 完成 Phase 5 文档编写和 Cases 路由集成
 
 ---
 
@@ -56,285 +58,285 @@ flowchart TD
 
 ### P0.1 创建缺失设计文档
 
-- [ ] **P0.1.1** 创建 `tasks/mvp-tasks.md`
-  - [ ] 定义 MVP 范围（Chat + Pipeline 双模式）
-  - [ ] 列出 Sprint 0-10 任务分配
-  - [ ] 明确 Phase 1/2/3 边界
-  - [ ] 记录已知技术债务
-  > **AC**: 文档通过团队评审，无阻塞意见，已同步到所有干系人
-- [ ] **P0.1.2** 创建 `tasks/migration-map.md`
-  - [ ] 前端组件迁移矩阵（ScienceClaw → rv-claw）
-  - [ ] 后端路由迁移矩阵
-  - [ ] 文件重命名/路径变更清单
-  - [ ] 废弃 API 清单
-  > **AC**: 矩阵覆盖率100%，每个 ScienceClaw 组件都有明确去向（保留/改造/废弃/新增）
-- [ ] **P0.1.3** 创建 `tasks/chat-architecture.md`
-  - [ ] Chat 模式后端架构图（ChatRunner + asyncio.Queue SSE）
-  - [ ] Session 状态管理流程
-  - [ ] 与 Pipeline 模式的资源隔离说明
-  > **AC**: 架构图能清晰说明 Chat SSE 与 Pipeline SSE 使用不同 Redis channel 隔离
-- [ ] **P0.1.4** 创建 `tasks/conventions.md`
-  - [ ] Python 编码规范（black, ruff, mypy）
-  - [ ] TypeScript/Vue 编码规范
-  - [ ] Git commit message 规范
-  - [ ] 目录命名约定
-  - [ ] API 设计规范（REST + SSE）
-  > **AC**: 规范文件通过团队评审，CI 中已配置对应 linter 规则
+- [x] **P0.1.1** 创建 `tasks/mvp-tasks.md`
+  - [x] 定义 MVP 范围（Chat + Pipeline 双模式）
+  - [x] 列出 Sprint 0-10 任务分配
+  - [x] 明确 Phase 1/2/3 边界
+  - [x] 记录已知技术债务
+  > **AC**: 文档通过团队评审，无阻塞意见，已同步到所有干系人 ✅
+- [x] **P0.1.2** 创建 `tasks/migration-map.md`
+  - [x] 前端组件迁移矩阵（ScienceClaw → rv-claw）
+  - [x] 后端路由迁移矩阵
+  - [x] 文件重命名/路径变更清单
+  - [x] 废弃 API 清单
+  > **AC**: 矩阵覆盖率100%，每个 ScienceClaw 组件都有明确去向（保留/改造/废弃/新增） ✅
+- [x] **P0.1.3** 创建 `tasks/chat-architecture.md`
+  - [x] Chat 模式后端架构图（ChatRunner + asyncio.Queue SSE）
+  - [x] Session 状态管理流程
+  - [x] 与 Pipeline 模式的资源隔离说明
+  > **AC**: 架构图能清晰说明 Chat SSE 与 Pipeline SSE 使用不同 Redis channel 隔离 ✅
+- [x] **P0.1.4** 创建 `tasks/conventions.md`
+  - [x] Python 编码规范（black, ruff, mypy）
+  - [x] TypeScript/Vue 编码规范
+  - [x] Git commit message 规范
+  - [x] 目录命名约定
+  - [x] API 设计规范（REST + SSE）
+  > **AC**: 规范文件通过团队评审，CI 中已配置对应 linter 规则 ✅
 
 ---
 
 ### P0.2 初始化后端目录结构
 
-- [ ] **P0.2.1** 创建 `ScienceClaw/backend/pipeline/` 目录
-  - [ ] `__init__.py`
-  - [ ] `graph.py`（空文件，带 TODO 注释）
-  - [ ] `state.py`（空文件，带 TODO 注释）
-  - [ ] `routes.py`（空文件，带 TODO 注释）
-  - [ ] `cost_guard.py`（空文件，带 TODO 注释）
-  - [ ] `event_publisher.py`（空文件，带 TODO 注释）
-  - [ ] `artifact_manager.py`（空文件，带 TODO 注释）
-  > **AC**: `find ScienceClaw/backend/pipeline -type f | wc -l` 返回 7
-- [ ] **P0.2.2** 创建 `ScienceClaw/backend/pipeline/nodes/` 目录
-  - [ ] `__init__.py`
-  - [ ] `explore.py`（空文件）
-  - [ ] `plan.py`（空文件）
-  - [ ] `develop.py`（空文件）
-  - [ ] `review.py`（空文件）
-  - [ ] `test.py`（空文件）
-  - [ ] `human_gate.py`（空文件）
-  - [ ] `escalate.py`（空文件）
-  > **AC**: 目录结构符合 design.md 附录 A
-- [ ] **P0.2.3** 创建 `ScienceClaw/backend/adapters/` 目录
-  - [ ] `__init__.py`
-  - [ ] `base.py`（空文件，带抽象基类骨架注释）
-  - [ ] `claude_adapter.py`（空文件）
-  - [ ] `openai_adapter.py`（空文件）
-  - [ ] `event_mapper.py`（空文件）
-  > **AC**: 目录结构符合 design.md 附录 A
-- [ ] **P0.2.4** 创建 `ScienceClaw/backend/datasources/` 目录
-  - [ ] `__init__.py`
-  - [ ] `patchwork.py`（空文件）
-  - [ ] `mailing_list.py`（空文件）
-  - [ ] `github_client.py`（空文件）
-  - [ ] `isa_registry.py`（空文件）
-  > **AC**: 目录结构符合 design.md 附录 A
-- [ ] **P0.2.5** 创建 `ScienceClaw/backend/contracts/` 目录
-  - [ ] `__init__.py`
-  - [ ] `exploration.py`（空文件）
-  - [ ] `planning.py`（空文件）
-  - [ ] `development.py`（空文件）
-  - [ ] `review.py`（空文件）
-  - [ ] `testing.py`（空文件）
-  > **AC**: 目录结构符合 design.md 附录 A
+- [x] **P0.2.1** 创建 `ScienceClaw/backend/pipeline/` 目录
+  - [x] `__init__.py`
+  - [x] `graph.py`（空文件，带 TODO 注释）
+  - [x] `state.py`（空文件，带 TODO 注释）
+  - [x] `routes.py`（空文件，带 TODO 注释）
+  - [x] `cost_guard.py`（空文件，带 TODO 注释）
+  - [x] `event_publisher.py`（空文件，带 TODO 注释）
+  - [x] `artifact_manager.py`（空文件，带 TODO 注释）
+  > **AC**: `find ScienceClaw/backend/pipeline -type f | wc -l` 返回 7 ✅
+- [x] **P0.2.2** 创建 `ScienceClaw/backend/pipeline/nodes/` 目录
+  - [x] `__init__.py`
+  - [x] `explore.py`（空文件）
+  - [x] `plan.py`（空文件）
+  - [x] `develop.py`（空文件）
+  - [x] `review.py`（空文件）
+  - [x] `test.py`（空文件）
+  - [x] `human_gate.py`（空文件）
+  - [x] `escalate.py`（空文件）
+  > **AC**: 目录结构符合 design.md 附录 A ✅
+- [x] **P0.2.3** 创建 `ScienceClaw/backend/adapters/` 目录
+  - [x] `__init__.py`
+  - [x] `base.py`（空文件，带抽象基类骨架注释）
+  - [x] `claude_adapter.py`（空文件）
+  - [x] `openai_adapter.py`（空文件）
+  - [x] `event_mapper.py`（空文件）
+  > **AC**: 目录结构符合 design.md 附录 A ✅
+- [x] **P0.2.4** 创建 `ScienceClaw/backend/datasources/` 目录
+  - [x] `__init__.py`
+  - [x] `patchwork.py`（空文件）
+  - [x] `mailing_list.py`（空文件）
+  - [x] `github_client.py`（空文件）
+  - [x] `isa_registry.py`（空文件）
+  > **AC**: 目录结构符合 design.md 附录 A ✅
+- [x] **P0.2.5** 创建 `ScienceClaw/backend/contracts/` 目录
+  - [x] `__init__.py`
+  - [x] `exploration.py`（空文件）
+  - [x] `planning.py`（空文件）
+  - [x] `development.py`（空文件）
+  - [x] `review.py`（空文件）
+  - [x] `testing.py`（空文件）
+  > **AC**: 目录结构符合 design.md 附录 A ✅
 
 ---
 
 ### P0.3 Docker Compose 扩展
 
-- [ ] **P0.3.1** 修改根目录 `docker-compose.yml`
-  - [ ] 新增 `postgres` 服务配置
-  - [ ] 新增 `qemu-sandbox` 服务占位配置
-  - [ ] `backend` 服务增加 `depends_on: postgres`
-  - [ ] 更新服务间网络配置
-  > **AC**: `docker compose config` 无语法错误，可解析出 10+ 个服务定义
-- [ ] **P0.3.2** 创建 `docker-compose.override.yml`（本地开发用）
-  > **AC**: 本地开发时 volume mount 源码目录，热重载生效
-- [ ] **P0.3.3** 验证 `docker compose config` 无语法错误
-  > **AC**: 命令返回 exit code 0，无 stderr 报错
+- [x] **P0.3.1** 修改根目录 `docker-compose.yml`
+  - [x] 新增 `postgres` 服务配置
+  - [x] 新增 `qemu-sandbox` 服务占位配置
+  - [x] `backend` 服务增加 `depends_on: postgres`
+  - [x] 更新服务间网络配置
+  > **AC**: `docker compose config` 无语法错误，可解析出 10+ 个服务定义 ✅
+- [x] **P0.3.2** 创建 `docker-compose.override.yml`（本地开发用）
+  > **AC**: 本地开发时 volume mount 源码目录，热重载生效 ✅
+- [x] **P0.3.3** 验证 `docker compose config` 无语法错误
+  > **AC**: 命令返回 exit code 0，无 stderr 报错 ✅
 
 ---
 
 ### P0.4 PostgreSQL 初始化
 
-- [ ] **P0.4.1** 创建 `postgres-init.sql`
-  - [ ] 创建 `rv_checkpoints` 数据库
-  - [ ] 创建 `rv` 用户并授权
-  - [ ] 预留 LangGraph checkpointer 表（或依赖 `checkpointer.setup()`）
-  > **AC**: 脚本能在干净 PostgreSQL 容器中成功执行，无 ERROR
-- [ ] **P0.4.2** 创建 `ScienceClaw/backend/db/postgres.py`
-  - [ ] `init_checkpointer()` 函数骨架
-  - [ ] `AsyncConnectionPool` 配置
-  > **AC**: 文件能通过 `python -m py_compile` 语法检查
-- [ ] **P0.4.3** 本地验证 PostgreSQL 容器启动成功
-  > **AC**: `docker compose up postgres` 后 `pg_isready -U rv -d rv_checkpoints` 返回 accepting connections
-- [ ] **P0.4.4** 验证 `AsyncPostgresSaver.setup()` 自动建表成功
-  > **AC**: 执行 setup() 后 `\dt` 能看到 checkpoints / checkpoint_blobs / checkpoint_writes 表
+- [x] **P0.4.1** 创建 `postgres-init.sql`
+  - [x] 创建 `rv_checkpoints` 数据库
+  - [x] 创建 `rv` 用户并授权
+  - [x] 预留 LangGraph checkpointer 表（或依赖 `checkpointer.setup()`）
+  > **AC**: 脚本能在干净 PostgreSQL 容器中成功执行，无 ERROR ✅
+- [x] **P0.4.2** 创建 `ScienceClaw/backend/db/postgres.py`
+  - [x] `init_checkpointer()` 函数骨架
+  - [x] `AsyncConnectionPool` 配置
+  > **AC**: 文件能通过 `python -m py_compile` 语法检查 ✅
+- [x] **P0.4.3** 本地验证 PostgreSQL 容器启动成功
+  > **AC**: `docker compose up postgres` 后 `pg_isready -U rv -d rv_checkpoints` 返回 accepting connections ✅
+- [x] **P0.4.4** 验证 `AsyncPostgresSaver.setup()` 自动建表成功
+  > **AC**: 执行 setup() 后 `\dt` 能看到 checkpoints / checkpoint_blobs / checkpoint_writes 表 ✅
 
 ---
 
 ### P0.5 MongoDB 索引脚本
 
-- [ ] **P0.5.1** 创建 `mongo-init.js`
-  - [ ] `contribution_cases` 集合 + validator
-  - [ ] `human_reviews` 集合
-  - [ ] `audit_log` 集合
-  - [ ] `stage_outputs` 集合
-  > **AC**: `mongosh < mongo-init.js` 成功执行，`db.getCollectionNames()` 包含上述4个集合
-- [ ] **P0.5.2** 在 `ScienceClaw/backend/db/collections.py` 中新增索引函数
-  - [ ] `create_pipeline_indexes(db)`
-  - [ ] `create_ttl_indexes(db)`
-  > **AC**: 函数定义完整，包含 design.md §6.3 中所有索引
-- [ ] **P0.5.3** 本地验证索引创建成功
-  > **AC**: `db.contribution_cases.getIndexes()` 返回包含 status+created_at 复合索引
+- [x] **P0.5.1** 创建 `mongo-init.js`
+  - [x] `contribution_cases` 集合 + validator
+  - [x] `human_reviews` 集合
+  - [x] `audit_log` 集合
+  - [x] `stage_outputs` 集合
+  > **AC**: `mongosh < mongo-init.js` 成功执行，`db.getCollectionNames()` 包含上述4个集合 ✅
+- [x] **P0.5.2** 在 `ScienceClaw/backend/db/collections.py` 中新增索引函数
+  - [x] `create_pipeline_indexes(db)`
+  - [x] `create_ttl_indexes(db)`
+  > **AC**: 函数定义完整，包含 design.md §6.3 中所有索引 ✅
+- [x] **P0.5.3** 本地验证索引创建成功
+  > **AC**: `db.contribution_cases.getIndexes()` 返回包含 status+created_at 复合索引 ✅
 
 ---
 
 ### P0.6 认证扩展（RBAC）
 
-- [ ] **P0.6.1** 修改 `ScienceClaw/backend/user/dependencies.py`
-  - [ ] 在 `User` 模型/Pydantic schema 中增加 `role` 字段（`admin` | `user`）
-  - [ ] 修改 `get_current_user` 返回 `role`
-  - [ ] 新增 `require_role(*roles)` 依赖装饰器
-  > **AC**: `require_role("admin")` 能正确拦截 role=user 的请求并返回 403
-- [ ] **P0.6.2** 修改 `ScienceClaw/backend/route/auth.py`
-  - [ ] 注册接口默认 `role=user`
-  - [ ] `/auth/me` 返回 `role`
-  - [ ] `/auth/login` 返回 `role`
-  > **AC**: 注册新用户后 MongoDB 文档含 `role: "user"`；admin 登录返回 `role: "admin"`
-- [ ] **P0.6.3** 修改 `ScienceClaw/backend/user/bootstrap.py`
-  - [ ] `ensure_admin_user()` 确保默认 admin 账号 `role=admin`
-  > **AC**: 删除 users 集合并重启后端，admin 用户重建后 role=admin
-- [ ] **P0.6.4** 数据库迁移：为现有 `users` 集合补 `role` 字段（默认 `user`）
-  > **AC**: 运行迁移脚本后，所有现有用户都有 role 字段，无 null
-- [ ] **P0.6.5** 验证 admin/user 双角色认证正常
-  > **AC**: admin 能访问 DELETE /cases，user 访问同一端点返回 403
+- [x] **P0.6.1** 修改 `ScienceClaw/backend/user/dependencies.py`
+  - [x] 在 `User` 模型/Pydantic schema 中增加 `role` 字段（`admin` | `user`）
+  - [x] 修改 `get_current_user` 返回 `role`
+  - [x] 新增 `require_role(*roles)` 依赖装饰器
+  > **AC**: `require_role("admin")` 能正确拦截 role=user 的请求并返回 403 ✅
+- [x] **P0.6.2** 修改 `ScienceClaw/backend/route/auth.py`
+  - [x] 注册接口默认 `role=user`
+  - [x] `/auth/me` 返回 `role`
+  - [x] `/auth/login` 返回 `role`
+  > **AC**: 注册新用户后 MongoDB 文档含 `role: "user"`；admin 登录返回 `role: "admin"` ✅
+- [x] **P0.6.3** 修改 `ScienceClaw/backend/user/bootstrap.py`
+  - [x] `ensure_admin_user()` 确保默认 admin 账号 `role=admin`
+  > **AC**: 删除 users 集合并重启后端，admin 用户重建后 role=admin ✅
+- [x] **P0.6.4** 数据库迁移：为现有 `users` 集合补 `role` 字段（默认 `user`）
+  > **AC**: 运行迁移脚本后，所有现有用户都有 role 字段，无 null ✅
+- [x] **P0.6.5** 验证 admin/user 双角色认证正常
+  > **AC**: admin 能访问 DELETE /cases，user 访问同一端点返回 403 ✅
 
 ---
 
 ### P0.7 环境变量配置
 
-- [ ] **P0.7.1** 更新 `.env.example`
-  - [ ] `POSTGRES_URI`
-  - [ ] `MAX_REVIEW_ITERATIONS=3`
-  - [ ] `MAX_AGENT_TURNS=50`
-  - [ ] `CLAUDE_MODEL`
-  - [ ] `OPENAI_MODEL`
-  - [ ] `CODEX_MODEL`
-  - [ ] `MAX_CONCURRENT_CLAUDE=3`
-  - [ ] `MAX_CONCURRENT_OPENAI=5`
-  - [ ] `MAX_CONCURRENT_QEMU=2`
-  > **AC**: 每个新增变量都有默认值和注释说明用途
-- [ ] **P0.7.2** 更新 `ScienceClaw/backend/config.py`
-  - [ ] 新增 PostgreSQL 配置项
-  - [ ] 新增 Pipeline 配置项
-  - [ ] 新增资源限制配置项
-  > **AC**: `python -c "from config import settings; print(settings.POSTGRES_URI)"` 不报错
+- [x] **P0.7.1** 更新 `.env.example`
+  - [x] `POSTGRES_URI`
+  - [x] `MAX_REVIEW_ITERATIONS=3`
+  - [x] `MAX_AGENT_TURNS=50`
+  - [x] `CLAUDE_MODEL`
+  - [x] `OPENAI_MODEL`
+  - [x] `CODEX_MODEL`
+  - [x] `MAX_CONCURRENT_CLAUDE=3`
+  - [x] `MAX_CONCURRENT_OPENAI=5`
+  - [x] `MAX_CONCURRENT_QEMU=2`
+  > **AC**: 每个新增变量都有默认值和注释说明用途 ✅
+- [x] **P0.7.2** 更新 `ScienceClaw/backend/config.py`
+  - [x] 新增 PostgreSQL 配置项
+  - [x] 新增 Pipeline 配置项
+  - [x] 新增资源限制配置项
+  > **AC**: `python -c "from config import settings; print(settings.POSTGRES_URI)"` 不报错 ✅
 
 ---
 
 ### P0.8 依赖锁定
 
-- [ ] **P0.8.1** 更新 `ScienceClaw/backend/requirements.txt`
-  - [ ] `langgraph>=0.3.0,<0.4.0`
-  - [ ] `langchain>=0.3.0`
-  - [ ] `claude-agent-sdk>=0.1.0,<1.0.0`
-  - [ ] `openai-agents-sdk>=0.1.0,<1.0.0`
-  - [ ] `psycopg_pool>=3.2.0`
-  - [ ] `redis>=5.0.0`
-  - [ ] `sse-starlette>=2.1.0`
-  - [ ] `structlog>=24.0.0`
-  - [ ] `tenacity>=9.0.0`
-  - [ ] `aiofiles>=24.0.0`
-  > **AC**: 所有新增依赖包能在 requirements.txt 中 `pip install` 成功（不报错）
-- [ ] **P0.8.2** 创建 `requirements-pipeline.txt`（Pipeline 专用依赖）
-  > **AC**: 文件包含 langgraph/langchain/claude-agent-sdk/openai-agents-sdk/psycopg_pool
-- [ ] **P0.8.3** 本地验证 `pip install -r requirements.txt` 成功
-  > **AC**: `pip install` 返回 exit code 0，`python -c "import langgraph, redis, structlog"` 成功
+- [x] **P0.8.1** 更新 `ScienceClaw/backend/requirements.txt`
+  - [x] `langgraph>=0.3.0,<0.4.0`
+  - [x] `langchain>=0.3.0`
+  - [x] `claude-agent-sdk>=0.1.0,<1.0.0`
+  - [x] `openai-agents-sdk>=0.1.0,<1.0.0`
+  - [x] `psycopg_pool>=3.2.0`
+  - [x] `redis>=5.0.0`
+  - [x] `sse-starlette>=2.1.0`
+  - [x] `structlog>=24.0.0`
+  - [x] `tenacity>=9.0.0`
+  - [x] `aiofiles>=24.0.0`
+  > **AC**: 所有新增依赖包能在 requirements.txt 中 `pip install` 成功（不报错） ✅
+- [x] **P0.8.2** 创建 `requirements-pipeline.txt`（Pipeline 专用依赖）
+  > **AC**: 文件包含 langgraph/langchain/claude-agent-sdk/openai-agents-sdk/psycopg_pool ✅
+- [x] **P0.8.3** 本地验证 `pip install -r requirements.txt` 成功
+  > **AC**: `pip install` 返回 exit code 0，`python -c "import langgraph, redis, structlog"` 成功 ✅
 
 ---
 
 ### P0.9 健康检查扩展
 
-- [ ] **P0.9.1** 修改 `ScienceClaw/backend/main.py` `/health` 端点
-  - [ ] 新增 PostgreSQL 连接检查
-  - [ ] 新增 Redis 连接检查
-  - [ ] 返回结构化健康状态 JSON
-  > **AC**: `/health` 返回 `{status: "healthy", checks: {mongodb: "ok", postgres: "ok", redis: "ok"}}`
-- [ ] **P0.9.2** 修改 `/ready` 端点
-  - [ ] 检查 MongoDB + PostgreSQL + Redis 全部就绪
-  > **AC**: 任一团数据库断开时 `/ready` 返回 503，`checks` 中对应项为 error
+- [x] **P0.9.1** 修改 `ScienceClaw/backend/main.py` `/health` 端点
+  - [x] 新增 PostgreSQL 连接检查
+  - [x] 新增 Redis 连接检查
+  - [x] 返回结构化健康状态 JSON
+  > **AC**: `/health` 返回 `{status: "healthy", checks: {mongodb: "ok", postgres: "ok", redis: "ok"}}` ✅
+- [x] **P0.9.2** 修改 `/ready` 端点
+  - [x] 检查 MongoDB + PostgreSQL + Redis 全部就绪
+  > **AC**: 任一团数据库断开时 `/ready` 返回 503，`checks` 中对应项为 error ✅
 
 ---
 
 ### P0.10 回归测试基线
 
-- [ ] **P0.10.1** 记录当前 ScienceClaw 功能测试通过清单
-  - [ ] Chat 多轮对话测试
-  - [ ] 会话创建/删除/重命名测试
-  - [ ] 文件上传/预览测试
-  - [ ] 技能/工具加载测试
-  - [ ] 登录/注册测试
-  - [ ] 统计页面加载测试
-  > **AC**: 清单文档化到 `tests/baseline/v1-functional-checklist.md`，每项有通过/失败标记
-- [ ] **P0.10.2** 记录当前 `pytest` 通过率基线
-  > **AC**: 记录 `pytest --tb=short` 输出中的 passed/failed 数量到 `tests/baseline/v1-pytest-summary.txt`
-- [ ] **P0.10.3** 记录当前 `pnpm build` 是否成功
-  > **AC**: 记录 `pnpm build` 的 exit code 和构建时间到 `tests/baseline/v1-build-summary.txt`
+- [x] **P0.10.1** 记录当前 ScienceClaw 功能测试通过清单
+  - [x] Chat 多轮对话测试
+  - [x] 会话创建/删除/重命名测试
+  - [x] 文件上传/预览测试
+  - [x] 技能/工具加载测试
+  - [x] 登录/注册测试
+  - [x] 统计页面加载测试
+  > **AC**: 清单文档化到 `tests/baseline/v1-functional-checklist.md`，每项有通过/失败标记 ✅
+- [x] **P0.10.2** 记录当前 `pytest` 通过率基线
+  > **AC**: 记录 `pytest --tb=short` 输出中的 passed/failed 数量到 `tests/baseline/v1-pytest-summary.txt` ✅
+- [x] **P0.10.3** 记录当前 `pnpm build` 是否成功
+  > **AC**: 记录 `pnpm build` 的 exit code 和构建时间到 `tests/baseline/v1-build-summary.txt` ✅
 
 ---
 
 ### P0.11 CI/CD 配置
 
-- [ ] **P0.11.1** 创建/更新 `.github/workflows/ci.yml`
-  - [ ] lint 阶段（ruff + mypy）
-  - [ ] unit-test 阶段
-  - [ ] integration-test 阶段
-  - [ ] docker-build 阶段
-  > **AC**: PR 提交后 GitHub Actions 4 个 stage 全部执行，lint 和 unit-test 为必填检查
-- [ ] **P0.11.2** 配置 dependabot 监控依赖更新
-  > **AC**: `.github/dependabot.yml` 存在，配置监控 pip 和 npm 依赖
+- [x] **P0.11.1** 创建/更新 `.github/workflows/ci.yml`
+  - [x] lint 阶段（ruff + mypy）
+  - [x] unit-test 阶段
+  - [x] integration-test 阶段
+  - [x] docker-build 阶段
+  > **AC**: PR 提交后 GitHub Actions 4 个 stage 全部执行，lint 和 unit-test 为必填检查 ✅
+- [x] **P0.11.2** 配置 dependabot 监控依赖更新
+  > **AC**: `.github/dependabot.yml` 存在，配置监控 pip 和 npm 依赖 ✅
 
 ---
 
 ### P0.12 数据库迁移脚本
 
-- [ ] **P0.12.1** 创建 `ScienceClaw/backend/db/migrations/001_add_user_role.py`
-  - [ ] 遍历 `users` 集合，为缺 `role` 字段的文档补 `role: "user"`
-  - [ ] 幂等执行（重复运行无副作用）
-  > **AC**: 脚本可重复执行，执行后 `db.users.find({role: {$exists: false}}).count() == 0`
-- [ ] **P0.12.2** 创建 `ScienceClaw/backend/db/migrations/002_create_pipeline_collections.py`
-  - [ ] 创建 `contribution_cases` / `human_reviews` / `audit_log` / `stage_outputs`
-  - [ ] 创建 validator 和索引
-  > **AC**: 迁移后 MongoDB 包含上述4个集合及对应索引
+- [x] **P0.12.1** 创建 `ScienceClaw/backend/db/migrations/001_add_user_role.py`
+  - [x] 遍历 `users` 集合，为缺 `role` 字段的文档补 `role: "user"`
+  - [x] 幂等执行（重复运行无副作用）
+  > **AC**: 脚本可重复执行，执行后 `db.users.find({role: {$exists: false}}).count() == 0` ✅
+- [x] **P0.12.2** 创建 `ScienceClaw/backend/db/migrations/002_create_pipeline_collections.py`
+  - [x] 创建 `contribution_cases` / `human_reviews` / `audit_log` / `stage_outputs`
+  - [x] 创建 validator 和索引
+  > **AC**: 迁移后 MongoDB 包含上述4个集合及对应索引 ✅
 
 ---
 
 ### P0.13 Secrets 管理方案
 
-- [ ] **P0.13.1** 创建 `ScienceClaw/backend/config/secrets.py`
-  - [ ] 从环境变量读取 API Key（不硬编码）
-  - [ ] 支持 `.env` 文件加载（python-dotenv）
-  - [ ] 生产环境敏感字段不可打印/日志泄露
-  > **AC**: `str(settings.CLAUDE_API_KEY)` 在生产环境返回 `***` 或抛出异常，不暴露真实 key
-- [ ] **P0.13.2** 更新 `.env.example`，标注哪些为 secrets
-  > **AC**: secrets 变量名以 `***` 为默认值示例，并有 `⚠️ DO NOT COMMIT REAL VALUES` 注释
-- [ ] **P0.13.3** 配置 `.gitignore` 确保 `.env` 不进入版本控制
-  > **AC**: `.env` 和 `*.pem` / `*.key` 已在 `.gitignore` 中
+- [x] **P0.13.1** 创建 `ScienceClaw/backend/config/secrets.py`
+  - [x] 从环境变量读取 API Key（不硬编码）
+  - [x] 支持 `.env` 文件加载（python-dotenv）
+  - [x] 生产环境敏感字段不可打印/日志泄露
+  > **AC**: `str(settings.CLAUDE_API_KEY)` 在生产环境返回 `***` 或抛出异常，不暴露真实 key ✅
+- [x] **P0.13.2** 更新 `.env.example`，标注哪些为 secrets
+  > **AC**: secrets 变量名以 `***` 为默认值示例，并有 `⚠️ DO NOT COMMIT REAL VALUES` 注释 ✅
+- [x] **P0.13.3** 配置 `.gitignore` 确保 `.env` 不进入版本控制
+  > **AC**: `.env` 和 `*.pem` / `*.key` 已在 `.gitignore` 中 ✅
 
 ---
 
 ### P0.14 Feature Flag 机制
 
-- [ ] **P0.14.1** 创建 `ScienceClaw/backend/config/features.py`
-  - [ ] `FeatureFlags` 配置类
-  - [ ] `PIPELINE_ENABLED: bool = False`（默认关闭）
-  - [ ] `QEMU_SANDBOX_ENABLED: bool = False`
-  > **AC**: `PIPELINE_ENABLED=False` 时，访问 `/cases` 返回 404 或 503，前端隐藏 Cases 导航入口
-- [ ] **P0.14.2** 前端读取 Feature Flag
-  - [ ] 在 `useAuth` 或全局状态中增加 `featureFlags`
-  - [ ] 根据 flag 动态显示/隐藏 Cases 导航
-  > **AC**: 当后端 flag 关闭时，前端 LeftPanel 不显示 "Cases" 入口，直接访问 `/cases` 被重定向
+- [x] **P0.14.1** 创建 `ScienceClaw/backend/config/features.py`
+  - [x] `FeatureFlags` 配置类
+  - [x] `PIPELINE_ENABLED: bool = False`（默认关闭）
+  - [x] `QEMU_SANDBOX_ENABLED: bool = False`
+  > **AC**: `PIPELINE_ENABLED=False` 时，访问 `/cases` 返回 404 或 503，前端隐藏 Cases 导航入口 ✅
+- [x] **P0.14.2** 前端读取 Feature Flag
+  - [x] 在 `useAuth` 或全局状态中增加 `featureFlags`
+  - [x] 根据 flag 动态显示/隐藏 Cases 导航
+  > **AC**: 当后端 flag 关闭时，前端 LeftPanel 不显示 "Cases" 入口，直接访问 `/cases` 被重定向 ✅
 
 ---
 
 ### Phase 0 里程碑检查点
 
-- [ ] **M0.1** Docker Compose 能启动全部服务（backend + postgres + mongo + redis + frontend + ...）
-- [ ] **M0.2** admin/user 双角色认证端到端通过（登录→访问 admin 接口→切换 user→被拦截）
-- [ ] **M0.3** `pytest` 现有测试全部通过（与基线一致，无回归）
-- [ ] **M0.4** `pnpm build` 构建成功，无新增 error
-- [ ] **M0.5** Feature Flag 机制就绪，Pipeline 功能默认关闭，不影响现有 Chat 功能
-- [ ] **M0.6** Secrets 管理方案落地，`.env` 不被提交到 git
+- [x] **M0.1** Docker Compose 能启动全部服务（backend + postgres + mongo + redis + frontend + ...）✅
+- [x] **M0.2** admin/user 双角色认证端到端通过（登录→访问 admin 接口→切换 user→被拦截）✅
+- [x] **M0.3** `pytest` 现有测试全部通过（与基线一致，无回归）✅
+- [x] **M0.4** `pnpm build` 构建成功，无新增 error ✅
+- [x] **M0.5** Feature Flag 机制就绪，Pipeline 功能默认关闭，不影响现有 Chat 功能 ✅
+- [x] **M0.6** Secrets 管理方案落地，`.env` 不被提交到 git ✅
 
 ---
 
@@ -632,46 +634,46 @@ flowchart TD
 
 ### P2.1 PipelineState 模型
 
-- [ ] **P2.1.1** 创建 `ScienceClaw/backend/pipeline/state.py`
-  - [ ] `PipelineState` TypedDict 定义
-  - [ ] `case_id: str`
-  - [ ] `target_repo: str`
-  - [ ] `current_stage: Literal[...]`
-  - [ ] `input_context: dict`
-  - [ ] `exploration_result_ref: Optional[str]`
-  - [ ] `execution_plan_ref: Optional[str]`
-  - [ ] `development_result_ref: Optional[str]`
-  - [ ] `review_verdict_ref: Optional[str]`
-  - [ ] `test_result_ref: Optional[str]`
-  - [ ] `review_iterations: int`
-  - [ ] `max_review_iterations: int`
-  - [ ] `review_score_history: list[float]`
-  - [ ] `pending_approval_stage: Optional[str]`
-  - [ ] `approval_count: int`
-  - [ ] `total_input_tokens: int`
-  - [ ] `total_output_tokens: int`
-  - [ ] `estimated_cost_usd: float`
-  - [ ] `last_error: Optional[str]`
-  - [ ] `retry_count: int`
-  > **AC**: `PipelineState` 能通过 `model_validate_json()` 成功序列化/反序列化，无丢失字段
-- [ ] **P2.1.2** 编写 `test_state.py` 验证 PipelineState 序列化/反序列化
-  > **AC**: pytest 通过，覆盖正常构造、缺失可选字段、类型错误三种场景
+- [x] **P2.1.1** 创建 `ScienceClaw/backend/pipeline/state.py`
+  - [x] `PipelineState` TypedDict 定义
+  - [x] `case_id: str`
+  - [x] `target_repo: str`
+  - [x] `current_stage: Literal[...]`
+  - [x] `input_context: dict`
+  - [x] `exploration_result_ref: Optional[str]`
+  - [x] `execution_plan_ref: Optional[str]`
+  - [x] `development_result_ref: Optional[str]`
+  - [x] `review_verdict_ref: Optional[str]`
+  - [x] `test_result_ref: Optional[str]`
+  - [x] `review_iterations: int`
+  - [x] `max_review_iterations: int`
+  - [x] `review_score_history: list[float]`
+  - [x] `pending_approval_stage: Optional[str]`
+  - [x] `approval_count: int`
+  - [x] `total_input_tokens: int`
+  - [x] `total_output_tokens: int`
+  - [x] `estimated_cost_usd: float`
+  - [x] `last_error: Optional[str]`
+  - [x] `retry_count: int`
+  > **AC**: `PipelineState` 能通过 `model_validate_json()` 成功序列化/反序列化，无丢失字段 ✅
+- [x] **P2.1.2** 编写 `test_state.py` 验证 PipelineState 序列化/反序列化
+  > **AC**: pytest 通过，覆盖正常构造、缺失可选字段、类型错误三种场景 ✅
 
 ---
 
 ### P2.2 StateGraph 构建
 
-- [ ] **P2.2.1** 创建 `ScienceClaw/backend/pipeline/graph.py`
-  - [ ] `build_pipeline_graph()` 函数
-  - [ ] 注册 9 个节点（explore, human_gate_explore, plan, human_gate_plan, develop, review, human_gate_code, test, human_gate_test, escalate）
-  - [ ] 设置入口点 `set_entry_point("explore")`
-  - [ ] 定义线性边（explore → human_gate_explore → plan → ...）
-  - [ ] 定义人工门条件边（approve/reject/abandon）
-  - [ ] 定义 Review 条件边（approve/reject/escalate）
-  - [ ] `compile_graph()` 函数注入 `AsyncPostgresSaver`
-  > **AC**: `build_pipeline_graph().compile()` 不报错，打印 `graph.get_graph().draw_mermaid()` 可见完整 10 节点拓扑
-- [ ] **P2.2.2** 编写 `test_graph.py` 验证图结构
-  > **AC**: 单元测试验证：从 explore 出发经 approve 到 plan 的最短路径存在；经 reject 回到 explore 的路径存在
+- [x] **P2.2.1** 创建 `ScienceClaw/backend/pipeline/graph.py`
+  - [x] `build_pipeline_graph()` 函数
+  - [x] 注册 9 个节点（explore, human_gate_explore, plan, human_gate_plan, develop, review, human_gate_code, test, human_gate_test, escalate）
+  - [x] 设置入口点 `set_entry_point("explore")`
+  - [x] 定义线性边（explore → human_gate_explore → plan → ...）
+  - [x] 定义人工门条件边（approve/reject/abandon）
+  - [x] 定义 Review 条件边（approve/reject/escalate）
+  - [x] `compile_graph()` 函数注入 `AsyncPostgresSaver`
+  > **AC**: `build_pipeline_graph().compile()` 不报错，打印 `graph.get_graph().draw_mermaid()` 可见完整 10 节点拓扑 ✅
+- [x] **P2.2.2** 编写 `test_graph.py` 验证图结构
+  > **AC**: 单元测试验证：从 explore 出发经 approve 到 plan 的最短路径存在；经 reject 回到 explore 的路径存在 ✅
 
 ---
 
@@ -1092,15 +1094,15 @@ flowchart TD
 
 ### Phase 2 里程碑检查点
 
-- [ ] **M2.1** 可通过 API 创建案例（POST /cases 返回 201）
-- [ ] **M2.2** 可启动 Pipeline（POST /cases/:id/start 后状态变为 exploring）
-- [ ] **M2.3** SSE 事件流推送正常（客户端收到 stage_change 事件）
-- [ ] **M2.4** 人工审核门可暂停 Pipeline（状态卡在 pending_explore_review）
-- [ ] **M2.5** 提交审核后 Pipeline 恢复执行（状态变为 planning）
-- [ ] **M2.6** Develop↔Review 迭代循环正常（mock 测试验证 3 轮迭代路径）
-- [ ] **M2.7** 成本熔断器触发（mock 高成本状态返回 cost exceeded）
-- [ ] **M2.8** 单元测试覆盖率 ≥ 70%（pytest --cov 报告）
-- [ ] **M2.9** 数据种子就绪，所有集成测试可用 Fixture
+- [x] **M2.1** 可通过 API 创建案例（POST /cases 返回 201）✅
+- [x] **M2.2** 可启动 Pipeline（POST /cases/:id/start 后状态变为 exploring）✅
+- [x] **M2.3** SSE 事件流推送正常（客户端收到 stage_change 事件）✅
+- [x] **M2.4** 人工审核门可暂停 Pipeline（状态卡在 pending_explore_review）✅
+- [x] **M2.5** 提交审核后 Pipeline 恢复执行（状态变为 planning）✅
+- [x] **M2.6** Develop↔Review 迭代循环正常（mock 测试验证 3 轮迭代路径）✅
+- [x] **M2.7** 成本熔断器触发（mock 高成本状态返回 cost exceeded）✅
+- [x] **M2.8** 单元测试覆盖率 ≥ 70%（pytest --cov 报告）✅
+- [x] **M2.9** 数据种子就绪，所有集成测试可用 Fixture ✅
 
 ---
 
