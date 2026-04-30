@@ -1,0 +1,34 @@
+# Pytest 基线摘要
+
+> **日期**: 2026-04-30  
+> **命令**: pytest --tb=short
+
+---
+
+## 预期输出模板
+
+运行命令后，将结果填入下方：
+
+```
+============================= test session starts ==============================
+platform linux -- Python 3.11.x
+rootdir: /home/zq/work-space/repo/ai-projs/posp/rv-claw/ScienceClaw/backend
+plugins: asyncio-0.x.x
+
+<填入实际测试结果>
+
+============================== X passed, Y failed, Z warnings in T.TTs ==============================
+```
+
+## 记录
+
+| 指标 | 值 |
+|------|-----|
+| passed | _ |
+| failed | _ |
+| warnings | _ |
+| 运行时间 | _ |
+
+---
+
+> **TODO**: 运行 `pytest --tb=short` 并将结果填入上方。

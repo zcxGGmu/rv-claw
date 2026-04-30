@@ -50,6 +50,17 @@
         <div v-if="isTasksActive" class="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-gradient-to-b from-sky-300 to-teal-400 rounded-r-full"></div>
       </button>
 
+      <!-- Cases Tab -->
+      <button @click="handleCasesTabClick"
+        class="nav-btn size-10 rounded-xl flex items-center justify-center transition-all duration-250 group relative"
+        :class="isCasesActive
+          ? 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md shadow-amber-500/25'
+          : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300'"
+      >
+        <FolderOpen :size="19" :stroke-width="isCasesActive ? 2.5 : 1.8" />
+        <div v-if="isCasesActive" class="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-gradient-to-b from-amber-400 to-orange-500 rounded-r-full"></div>
+      </button>
+
       <!-- Spacer -->
       <div class="flex-1"></div>
 
@@ -314,6 +325,7 @@ const isChatActive = computed(() => route.path === '/' || route.path.startsWith(
 const isSkillsActive = computed(() => route.path.includes('/chat/skills'))
 const isToolsActive = computed(() => route.path.includes('/chat/tools') && !route.path.startsWith('/chat/tasks'))
 const isTasksActive = computed(() => route.path.startsWith('/chat/tasks'))
+const isCasesActive = computed(() => route.path.startsWith('/cases'))
 
 const handleChatTabClick = () => {
   if (isChatActive.value && isLeftPanelShow.value) {
@@ -350,6 +362,13 @@ const handleTasksTabClick = () => {
   }
   router.push('/chat/tasks')
   fetchScheduledTasks()
+}
+
+const handleCasesTabClick = () => {
+  if (isLeftPanelShow.value) {
+    toggleLeftPanel()
+  }
+  router.push('/cases')
 }
 
 const handleNewScheduledTaskClick = () => {

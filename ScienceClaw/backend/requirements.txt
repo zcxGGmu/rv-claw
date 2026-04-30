@@ -23,3 +23,13 @@ langchain-mcp-adapters
 tooluniverse
 lark-oapi
 qrcode>=8.0
+
+# Pipeline 专用依赖
+claude-agent-sdk>=0.1.0,<1.0.0
+openai-agents-sdk>=0.1.0,<1.0.0
+psycopg[binary]>=3.2.0
+psycopg_pool>=3.2.0
+redis>=5.0.0
+structlog>=24.0.0
+tenacity>=9.0.0
+aiofiles>=24.0.0

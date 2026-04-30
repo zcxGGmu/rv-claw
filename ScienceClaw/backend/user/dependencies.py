@@ -57,3 +57,26 @@ async def require_user(user: Optional[User] = Depends(get_current_user)) -> User
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return user
+
+
+def require_role(*roles: str):
+    """
+    角色权限装饰器 — 要求用户具有指定角色之一.
+
+    Args:
+        roles: 允许的角色列表，如 ("admin", "user")
+
+    Returns:
+        依赖注入函数，可在 FastAPI 路由中使用.
+
+    Raises:
+        HTTPException: 403 如果用户角色不在允许列表中.
+    """
+    async def checker(user: User = Depends(require_user)) -> User:
+        if user.role not in roles:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Insufficient permissions. Required: {', '.join(roles)}. Got: {user.role}",
+            )
+        return user
+    return checker

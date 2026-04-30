@@ -54,8 +54,36 @@ class Settings(BaseSettings):
     lark_app_id: str = os.environ.get("LARK_APP_ID", "")
     lark_app_secret: str = os.environ.get("LARK_APP_SECRET", "")
 
-    # class Config:
-    #     env_prefix = 'APP_'
+    # PostgreSQL (LangGraph Checkpointer)
+    postgres_uri: str = os.environ.get(
+        "POSTGRES_URI",
+        "postgresql+asyncpg://rv:rv_password@localhost:5432/rv_checkpoints",
+    )
+
+    # Redis
+    redis_url: str = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+
+    # Pipeline 配置
+    max_review_iterations: int = int(os.environ.get("MAX_REVIEW_ITERATIONS", "3"))
+    max_agent_turns: int = int(os.environ.get("MAX_AGENT_TURNS", "50"))
+    max_concurrent_claude: int = int(os.environ.get("MAX_CONCURRENT_CLAUDE", "3"))
+    max_concurrent_openai: int = int(os.environ.get("MAX_CONCURRENT_OPENAI", "5"))
+    max_concurrent_qemu: int = int(os.environ.get("MAX_CONCURRENT_QEMU", "2"))
+
+    # 成本限制
+    max_cost_per_case: float = float(os.environ.get("MAX_COST_PER_CASE", "10.0"))
+    max_cost_per_hour: float = float(os.environ.get("MAX_COST_PER_HOUR", "50.0"))
+
+    # Claude / OpenAI 配置
+    claude_api_key: str = os.environ.get("CLAUDE_API_KEY", "")
+    claude_model: str = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4")
+    openai_api_key: str = os.environ.get("OPENAI_API_KEY", "")
+    openai_model: str = os.environ.get("OPENAI_MODEL", "gpt-4o")
+    codex_model: str = os.environ.get("CODEX_MODEL", "codex-mini")
+
+    # Feature Flags
+    pipeline_enabled: bool = os.environ.get("PIPELINE_ENABLED", "false").lower() == "true"
+    qemu_sandbox_enabled: bool = os.environ.get("QEMU_SANDBOX_ENABLED", "false").lower() == "true"
 
 
 # 全局配置实例

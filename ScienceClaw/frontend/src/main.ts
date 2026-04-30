@@ -24,6 +24,10 @@ import { configure } from "vue-gtag";
 import SharePage from './pages/SharePage.vue';
 import ShareLayout from './pages/ShareLayout.vue';
 
+const CaseListView = () => import('./views/CaseListView.vue')
+const CaseDetailView = () => import('./views/CaseDetailView.vue')
+const StatisticsPage = () => import('./views/StatisticsPage.vue')
+
 configure({
   tagId: 'G-XCRZ3HH31S' // Replace with your own Google Analytics tag ID
 })
@@ -76,6 +80,21 @@ export const router = createRouter({
         {
           path: 'tasks',
           component: TasksPage,
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'cases',
+          component: CaseListView,
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'cases/:id',
+          component: CaseDetailView,
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'statistics',
+          component: StatisticsPage,
           meta: { requiresAuth: true }
         }
       ]

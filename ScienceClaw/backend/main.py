@@ -84,19 +84,67 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     async def health():
-        return {"status": "ok"}
+        checks = {"mongodb": "ok", "postgres": "ok", "redis": "ok"}
+
+        try:
+            await db.get_collection("sessions").find_one({}, {"_id": 1})
+        except Exception as exc:
+            checks["mongodb"] = f"error: {exc}"
+
+        try:
+            from backend.db.postgres import init_checkpointer
+            from backend.config import settings
+            await init_checkpointer(settings.postgres_uri)
+        except Exception as exc:
+            checks["postgres"] = f"error: {exc}"
+
+        try:
+            import redis.asyncio as aioredis
+            from backend.config import settings
+            r = aioredis.from_url(settings.redis_url)
+            await r.ping()
+            await r.close()
+        except Exception as exc:
+            checks["redis"] = f"error: {exc}"
+
+        status = "healthy" if all(v == "ok" for v in checks.values()) else "degraded"
+        return {"status": status, "checks": checks}
 
     @app.get("/ready")
     async def ready():
+        from fastapi.responses import JSONResponse
+        checks = {}
+
         try:
             await db.get_collection("sessions").find_one({}, {"_id": 1})
-            return {"status": "ready", "mongodb": "ok"}
+            checks["mongodb"] = "ok"
         except Exception as exc:
-            from fastapi.responses import JSONResponse
-            return JSONResponse(
-                status_code=503,
-                content={"status": "not_ready", "mongodb": str(exc)},
-            )
+            checks["mongodb"] = str(exc)
+
+        try:
+            from backend.db.postgres import init_checkpointer
+            from backend.config import settings
+            await init_checkpointer(settings.postgres_uri)
+            checks["postgres"] = "ok"
+        except Exception as exc:
+            checks["postgres"] = str(exc)
+
+        try:
+            import redis.asyncio as aioredis
+            from backend.config import settings
+            r = aioredis.from_url(settings.redis_url)
+            await r.ping()
+            await r.close()
+            checks["redis"] = "ok"
+        except Exception as exc:
+            checks["redis"] = str(exc)
+
+        if all(v == "ok" for v in checks.values()):
+            return {"status": "ready", "checks": checks}
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "checks": checks},
+        )
 
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(sessions_router, prefix="/api/v1")

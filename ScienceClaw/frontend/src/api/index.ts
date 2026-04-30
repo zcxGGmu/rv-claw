@@ -4,6 +4,9 @@ export * from './auth';
 export * from './agent';
 export * from './file';
 export * from './im';
+export * from './cases';
+export * from './reviews';
+export * from './artifacts';
 
 // Export commonly used types and functions
 export type { ApiResponse, ApiError } from './client';

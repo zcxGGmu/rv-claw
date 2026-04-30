@@ -90,3 +90,31 @@ export interface PlanEventData extends BaseEventData {
 export interface ThinkingEventData extends BaseEventData {
   content: string;
 }
+
+// Pipeline SSE 事件类型
+export type PipelineEventType =
+  | 'stage_change'
+  | 'agent_output'
+  | 'review_request'
+  | 'iteration_update'
+  | 'cost_update'
+  | 'error'
+  | 'completed'
+
+export interface PipelineAgentEvent {
+  seq: number
+  case_id: string
+  event_type: PipelineEventType
+  data: Record<string, unknown>
+  timestamp: string
+}
+
+export interface PipelineSSECallbacks {
+  onStageChange?: (stage: string, status: string) => void
+  onAgentOutput?: (type: string, content: string) => void
+  onReviewRequest?: (stage: string, artifactRef: string) => void
+  onIterationUpdate?: (iteration: number) => void
+  onCostUpdate?: (cost: number) => void
+  onError?: (error: string) => void
+  onCompleted?: () => void
+}

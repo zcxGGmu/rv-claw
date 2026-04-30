@@ -43,6 +43,35 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
 
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: rv_checkpoints
+      POSTGRES_USER: rv
+      POSTGRES_PASSWORD: rv_password
+      TZ: Asia/Shanghai
+    ports:
+      - "5432:5432"
+    volumes:
+      - rv_postgres_data:/var/lib/postgresql/data
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rv -d rv_checkpoints || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  # ── Pipeline 专用 QEMU 沙箱（占位）──
+  qemu-sandbox:
+    image: alpine:3.19
+    command: ["sh", "-c", "echo 'QEMU sandbox placeholder' && sleep infinity"]
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      - ./workspace:/workspace
+    restart: unless-stopped
+
   # ── SearXNG 搜索引擎（websearch 服务的依赖） ──
   searxng:
     image: searxng/searxng:latest
@@ -133,6 +162,8 @@ services:
         condition: service_started
       mongo:
         condition: service_started
+      postgres:
+        condition: service_healthy
       websearch:
         condition: service_started
     healthcheck:
@@ -246,5 +277,6 @@ services:
 
 volumes:
   scienceclaw_mongo_data:
+  rv_postgres_data:
   scienceclaw_frontend_node_modules:
   scienceclaw_frontend_npm_cache:
