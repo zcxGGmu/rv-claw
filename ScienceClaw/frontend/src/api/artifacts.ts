@@ -1,7 +1,7 @@
-import { client } from './client'
+import { apiClient } from './client'
 
 export async function downloadArtifact(caseId: string, path: string): Promise<Blob> {
-  const response = await client.get(`/cases/${caseId}/artifacts/download`, {
+  const response = await apiClient.get(`/cases/${caseId}/artifacts/download`, {
     params: { path },
     responseType: 'blob',
   })
@@ -9,7 +9,7 @@ export async function downloadArtifact(caseId: string, path: string): Promise<Bl
 }
 
 export async function getArtifactContent(caseId: string, path: string): Promise<string> {
-  const response = await client.get<string>(`/cases/${caseId}/artifacts/content`, {
+  const response = await apiClient.get<string>(`/cases/${caseId}/artifacts/content`, {
     params: { path },
   })
   return response.data

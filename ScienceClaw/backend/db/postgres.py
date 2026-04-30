@@ -24,9 +24,11 @@ async def init_checkpointer(
     """
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
+    # psycopg AsyncConnectionPool uses postgresql:// not postgresql+asyncpg://
+    conninfo = postgres_uri.replace("postgresql+asyncpg://", "postgresql://", 1)
     connection_kwargs = {"autocommit": True, "prepare_threshold": 0}
     pool = AsyncConnectionPool(
-        conninfo=postgres_uri,
+        conninfo=conninfo,
         max_size=20,
         kwargs=connection_kwargs,
     )

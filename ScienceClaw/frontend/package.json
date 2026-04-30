@@ -13,6 +13,7 @@
     "test:e2e:debug": "playwright test --debug"
   },
   "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
     "@microsoft/fetch-event-source": "^2.0.1",
     "@novnc/novnc": "^1.5.0",
     "@types/dompurify": "^3.2.0",
@@ -23,6 +24,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dompurify": "^3.2.5",
+    "element-plus": "^2.13.7",
     "framer-motion": "^10.12.16",
     "highlight.js": "^11.11.1",
     "katex": "^0.16.38",
@@ -41,6 +43,7 @@
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.0",
     "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^24.0.13",
     "@vitejs/plugin-vue": "^4.2.3",
@@ -50,7 +53,6 @@
     "typescript": "^5.6.3",
     "vite": "^4.3.9",
     "vite-plugin-monaco-editor": "^1.1.0",
-    "vue-tsc": "^2.2.0",
-    "@playwright/test": "^1.49.0"
+    "vue-tsc": "^2.2.0"
   }
 }

@@ -2,33 +2,33 @@ import type { Case, CreateCaseRequest, ListCasesParams, PaginatedCases } from '@
 import type { ReviewDecision, ReviewRecord } from '@/types/review'
 import type { Artifact } from '@/types/artifact'
 import type { AgentEvent, SSECallbacks } from '@/types/event'
-import { client } from './client'
+import { apiClient } from './client'
 
 export async function createCase(data: CreateCaseRequest): Promise<Case> {
-  const response = await client.post<Case>('/cases', data)
+  const response = await apiClient.post<Case>('/cases', data)
   return response.data
 }
 
 export async function listCases(params?: ListCasesParams): Promise<PaginatedCases> {
-  const response = await client.get<PaginatedCases>('/cases', { params })
+  const response = await apiClient.get<PaginatedCases>('/cases', { params })
   return response.data
 }
 
 export async function getCase(caseId: string): Promise<Case> {
-  const response = await client.get<Case>(`/cases/${caseId}`)
+  const response = await apiClient.get<Case>(`/cases/${caseId}`)
   return response.data
 }
 
 export async function deleteCase(caseId: string): Promise<void> {
-  await client.delete(`/cases/${caseId}`)
+  await apiClient.delete(`/cases/${caseId}`)
 }
 
 export async function startPipeline(caseId: string): Promise<void> {
-  await client.post(`/cases/${caseId}/start`)
+  await apiClient.post(`/cases/${caseId}/start`)
 }
 
 export async function submitReview(caseId: string, decision: ReviewDecision): Promise<void> {
-  await client.post(`/cases/${caseId}/review`, decision)
+  await apiClient.post(`/cases/${caseId}/review`, decision)
 }
 
 export async function getArtifacts(
@@ -36,14 +36,14 @@ export async function getArtifacts(
   stage: string,
   round?: number,
 ): Promise<Artifact[]> {
-  const response = await client.get<Artifact[]>(`/cases/${caseId}/artifacts`, {
+  const response = await apiClient.get<Artifact[]>(`/cases/${caseId}/artifacts`, {
     params: { stage, round },
   })
   return response.data
 }
 
 export async function getHistory(caseId: string): Promise<ReviewRecord[]> {
-  const response = await client.get<ReviewRecord[]>(`/cases/${caseId}/history`)
+  const response = await apiClient.get<ReviewRecord[]>(`/cases/${caseId}/history`)
   return response.data
 }
 
