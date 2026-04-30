@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "type-check": "vue-tsc",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug"
   },
   "dependencies": {
     "@microsoft/fetch-event-source": "^2.0.1",
@@ -47,6 +50,7 @@
     "typescript": "^5.6.3",
     "vite": "^4.3.9",
     "vite-plugin-monaco-editor": "^1.1.0",
-    "vue-tsc": "^2.2.0"
+    "vue-tsc": "^2.2.0",
+    "@playwright/test": "^1.49.0"
   }
 }
