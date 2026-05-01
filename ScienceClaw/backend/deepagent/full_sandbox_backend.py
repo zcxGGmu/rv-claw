@@ -572,5 +572,12 @@ class FullSandboxBackend(SandboxBackendProtocol):
             resp.raise_for_status()
             return FileDownloadResponse(path=file_path, content=resp.content)
         except Exception as exc:
+            try:
+                from pathlib import Path
+                p = Path(file_path)
+                if p.exists():
+                    return FileDownloadResponse(path=file_path, content=p.read_bytes())
+            except Exception:
+                pass
             logger.error(f"[FullSandbox] Download failed for {file_path}: {exc}")
             return FileDownloadResponse(path=file_path, error="permission_denied")

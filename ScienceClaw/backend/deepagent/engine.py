@@ -14,7 +14,8 @@ from typing import Any, Dict, List, Optional
 from loguru import logger
 from langchain_openai import ChatOpenAI
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.outputs import ChatGeneration, ChatResult, ChatGenerationChunk
 
 from backend.config import settings
 
@@ -373,6 +374,96 @@ class _SafeChatOpenAI(ChatOpenAI):
             yield chunk
 
 
+from pydantic import Field as PydanticField
+
+class _ResponsesChat(BaseChatModel):
+    model_name: str = PydanticField(default="gpt-5.4")
+    api_key: str = PydanticField(default="")
+    base_url: str = PydanticField(default="")
+    max_tokens: int = PydanticField(default=2000)
+    _client: Any = None
+
+    def __init__(self, model: str, api_key: str, base_url: str, max_tokens: int, **kwargs: Any):
+        super().__init__(model_name=model, api_key=api_key, base_url=base_url, max_tokens=max_tokens, **kwargs)
+
+    def _get_client(self) -> Any:
+        if self._client is None:
+            from openai import AsyncOpenAI
+            self._client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
+        return self._client
+
+    @property
+    def _llm_type(self) -> str:
+        return "openai-responses"
+
+    def _lc_messages_to_responses(self, messages: List[BaseMessage]) -> List[dict]:
+        """Convert LangChain messages to OpenAI Responses API format."""
+        result = []
+        for msg in messages:
+            if isinstance(msg, SystemMessage):
+                result.append({"role": "system", "content": str(msg.content)})
+            elif isinstance(msg, HumanMessage):
+                result.append({"role": "user", "content": str(msg.content)})
+            elif isinstance(msg, AIMessage):
+                result.append({"role": "assistant", "content": str(msg.content)})
+            elif isinstance(msg, ToolMessage):
+                result.append({"role": "user", "content": str(msg.content)})
+            else:
+                result.append({"role": "user", "content": str(msg.content)})
+        return result
+
+    def _extract_text(self, response: Any) -> str:
+        """Extract text from Responses API output."""
+        parts = []
+        for item in response.output:
+            if getattr(item, "type", None) == "message" and item.content:
+                for part in item.content:
+                    if getattr(part, "type", None) == "output_text":
+                        parts.append(part.text)
+        return "".join(parts)
+
+    async def _agenerate(self, messages: List[BaseMessage], stop: Optional[List[str]] = None, run_manager: Any = None, **kwargs: Any) -> ChatResult:
+        client = self._get_client()
+        response = await client.responses.create(
+            model=self.model_name,
+            input=self._lc_messages_to_responses(messages),
+            max_output_tokens=self.max_tokens,
+        )
+        text = self._extract_text(response)
+        message = AIMessage(content=text)
+        generation = ChatGeneration(message=message)
+        return ChatResult(generations=[generation])
+
+    async def _astream(self, messages: List[BaseMessage], stop: Optional[List[str]] = None, run_manager: Any = None, **kwargs: Any) -> Any:
+        client = self._get_client()
+        response = await client.responses.create(
+            model=self.model_name,
+            input=self._lc_messages_to_responses(messages),
+            max_output_tokens=self.max_tokens,
+        )
+        text = self._extract_text(response)
+        message = AIMessageChunk(content=text)
+        chunk = ChatGenerationChunk(message=message)
+        yield chunk
+
+    def bind_tools(self, tools: Any, **kwargs: Any) -> Any:
+        return self
+
+    def _generate(self, messages: List[BaseMessage], stop: Optional[List[str]] = None, run_manager: Any = None, **kwargs: Any) -> ChatResult:
+        import asyncio
+        return asyncio.run(self._agenerate(messages, stop=stop, run_manager=run_manager, **kwargs))
+
+    def _stream(self, messages: List[BaseMessage], stop: Optional[List[str]] = None, run_manager: Any = None, **kwargs: Any) -> Any:
+        import asyncio
+        async_gen = self._astream(messages, stop=stop, run_manager=run_manager, **kwargs)
+        loop = asyncio.get_event_loop()
+        while True:
+            try:
+                yield loop.run_until_complete(async_gen.__anext__())
+            except StopAsyncIteration:
+                break
+
+
 def _apply_profile(model: BaseChatModel, context_window: int) -> BaseChatModel:
     """Set model profile so deepagents SummarizationMiddleware can auto-compute
     context window thresholds (trigger / keep) using fraction-based settings."""
@@ -423,14 +514,11 @@ def get_llm_model(
             )
             return _apply_profile(model, ctx_window)
 
-        model = _SafeChatOpenAI(
+        model = _ResponsesChat(
             model=model_name,
-            base_url=config.get("base_url") or settings.model_ds_base_url,
             api_key=config.get("api_key") or settings.model_ds_api_key,
+            base_url=config.get("base_url") or settings.model_ds_base_url,
             max_tokens=effective_max_tokens,
-            max_retries=3,
-            request_timeout=120,
-            model_kwargs=extra_kwargs,
         )
         return _apply_profile(model, ctx_window)
 
@@ -438,13 +526,10 @@ def get_llm_model(
         settings.model_ds_name,
         explicit=settings.context_window,
     )
-    model = _SafeChatOpenAI(
-        model=settings.model_ds_name,
-        base_url=settings.model_ds_base_url,
-        api_key=settings.model_ds_api_key,
-        max_tokens=effective_max_tokens,
-        max_retries=3,
-        request_timeout=120,
-        model_kwargs=extra_kwargs,
-    )
+    model = _ResponsesChat(
+            model=settings.model_ds_name,
+            api_key=settings.model_ds_api_key,
+            base_url=settings.model_ds_base_url,
+            max_tokens=effective_max_tokens,
+        )
     return _apply_profile(model, ctx_window)

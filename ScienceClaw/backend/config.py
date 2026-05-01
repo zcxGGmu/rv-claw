@@ -9,11 +9,11 @@ class Settings(BaseSettings):
     if ENVIRONMENT == "local":
         load_dotenv(".env")
 
-    model_ds_name: str = os.environ.get("DS_MODEL") or "deepseek-chat"
-    model_ds_api_key: str = os.environ.get("DS_API_KEY") or ""
-    model_ds_base_url: str = os.environ.get("DS_URL") or "https://api.deepseek.com/v1"
-    max_tokens: int = int(os.environ.get("MAX_TOKENS", "100000"))
-    context_window: int = int(os.environ.get("CONTEXT_WINDOW", "131072"))
+    model_ds_name: str = os.environ.get("DS_MODEL") or "gpt-5.4"
+    model_ds_api_key: str = os.environ.get("DS_API_KEY") or "sk-c83004a45ce5c4ce4f81fe0b8fa93b61"
+    model_ds_base_url: str = os.environ.get("DS_URL") or "https://claude.hanbbq.top/v1"
+    max_tokens: int = int(os.environ.get("MAX_TOKENS", "2000"))
+    context_window: int = int(os.environ.get("CONTEXT_WINDOW", "1000000"))
 
     https_only: bool = os.environ.get("HTTPS_ONLY", "false").lower() == "true"
     session_cookie: str = os.environ.get("SESSION_COOKIE") or "zdtc-agent-session"
@@ -74,12 +74,13 @@ class Settings(BaseSettings):
     max_cost_per_case: float = float(os.environ.get("MAX_COST_PER_CASE", "10.0"))
     max_cost_per_hour: float = float(os.environ.get("MAX_COST_PER_HOUR", "50.0"))
 
-    # Claude / OpenAI 配置
-    claude_api_key: str = os.environ.get("CLAUDE_API_KEY", "")
-    claude_model: str = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4")
-    openai_api_key: str = os.environ.get("OPENAI_API_KEY", "")
-    openai_model: str = os.environ.get("OPENAI_MODEL", "gpt-4o")
-    codex_model: str = os.environ.get("CODEX_MODEL", "codex-mini")
+    # Claude / OpenAI 配置 — 统一使用同一 OpenAI 兼容接口
+    claude_api_key: str = os.environ.get("CLAUDE_API_KEY", "sk-c83004a45ce5c4ce4f81fe0b8fa93b61")
+    claude_model: str = os.environ.get("CLAUDE_MODEL", "gpt-5.4")
+    openai_api_key: str = os.environ.get("OPENAI_API_KEY", "sk-c83004a45ce5c4ce4f81fe0b8fa93b61")
+    openai_model: str = os.environ.get("OPENAI_MODEL", "gpt-5.4")
+    codex_model: str = os.environ.get("CODEX_MODEL", "gpt-5.4")
+    openai_base_url: str = os.environ.get("OPENAI_BASE_URL", "https://claude.hanbbq.top/v1")
 
     # Feature Flags
     pipeline_enabled: bool = os.environ.get("PIPELINE_ENABLED", "false").lower() == "true"

@@ -52,8 +52,7 @@ class UpdateModelRequest(BaseModel):
 async def init_system_models():
     """
     Initialize system models from environment variables or settings.
-    Only creates system model when DS_API_KEY is configured;
-    otherwise cleans up any existing system model with empty key.
+    Creates a unified system model using the single OpenAI-compatible endpoint.
     """
     now = int(time.time())
 
@@ -67,8 +66,8 @@ async def init_system_models():
     system_definitions = [
         {
             "_id": "system-default",
-            "name": "DeepSeek V3.2",
-            "provider": "deepseek",
+            "name": "Unified LLM (gpt-5.4)",
+            "provider": "openai",
             "base_url": settings.model_ds_base_url,
             "api_key": settings.model_ds_api_key,
             "model_name": settings.model_ds_name,

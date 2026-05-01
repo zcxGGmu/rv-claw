@@ -11,7 +11,9 @@ from loguru import logger
 from backend.mongodb.db import db
 from backend.deepagent.plan_types import PlanStep
 
-_BASE_WORKSPACE = os.environ.get("WORKSPACE_DIR", "/home/scienceclaw")
+_DEFAULT_WORKSPACE = os.path.join(os.path.expanduser("~"), "workspace", "scienceclaw")
+_BASE_WORKSPACE = os.environ.get("WORKSPACE_DIR", _DEFAULT_WORKSPACE)
+os.makedirs(_BASE_WORKSPACE, exist_ok=True, mode=0o777)
 
 
 def _render_planner_md(plan: List[PlanStep]) -> str:
