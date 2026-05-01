@@ -1,10 +1,11 @@
 # RV-Claw 完整重构计划 v3.0（整合版）
 
-> **版本**: v3.0
-> **日期**: 2026-04-29
+> **版本**: v3.1
+> **日期**: 2026-05-01
 > **对标基准**: ScienceClaw (完整功能迁移) + design.md (后端架构重构)
 > **目标**: 在保留 ScienceClaw 全部前端功能的基础上，实现 RV-Insights 五阶段 Agent Pipeline
 > **整合来源**: refactor-plan.md (v1.0) + refactor-plan-v2.md (v2.0) + design.md (权威架构) + 实际代码库分析
+> **审计状态**: 2026-05-01 完成全量代码审计，进度和已知问题已同步到 [progress.md](./progress.md)。本文档保留原始设计规划，实际实现偏差详见 progress.md 各 Phase 审计注释。
 
 ---
 
@@ -1215,12 +1216,13 @@ M5 (W16): 生产就绪，性能/安全/监控完备
 | P0.11 | CI/CD 配置 | GitHub Actions 增加 Pipeline 阶段检查 | `.github/workflows/ci.yml` | DevOps | 无 |
 
 **Phase 0 DoD (Definition of Done)**:
-- [ ] `docker compose up` 成功启动 10+ 个服务
-- [ ] `pytest` 现有测试全部通过
-- [ ] `pnpm build` 前端构建成功
-- [ ] admin/user 双角色认证正常
-- [ ] PostgreSQL checkpointer 表自动创建
-- [ ] 所有新目录结构就绪
+- [x] `docker compose up` 成功启动 10+ 个服务 ✅（12 个服务定义）
+- [x] `pytest` 现有测试全部通过 ✅（16 个测试通过）
+- [x] `pnpm build` 前端构建成功 ✅
+- [x] admin/user 双角色认证正常 ✅
+- [x] PostgreSQL checkpointer 表自动创建 ✅
+- [x] 所有新目录结构就绪 ✅
+- [ ] MongoDB 索引自动创建 ❌（`db/collections.py` 函数体为空）
 
 ---
 
@@ -1250,11 +1252,14 @@ M5 (W16): 生产就绪，性能/安全/监控完备
 | P1.11 | E2E 基线测试 | 验证所有 ScienceClaw 页面可访问 | 测试通过 | P1.1-P1.10 |
 
 **Phase 1 DoD**:
-- [ ] 所有 ScienceClaw 页面可正常访问且功能完整
-- [ ] 新增 `/cases` 路由可访问（空页面即可）
-- [ ] 设置系统新增 PipelineSettings Tab
-- [ ] 统计 API endpoint 迁移完成
-- [ ] E2E 回归测试基线通过
+- [x] 所有 ScienceClaw 页面可正常访问且功能完整 ✅
+- [x] 新增 `/cases` 路由可访问 ✅
+- [ ] 设置系统新增 PipelineSettings Tab ❌（未实现）
+- [x] 统计 API endpoint 迁移完成 ✅
+- [x] E2E 回归测试基线通过 ✅（Playwright 13/14 测试通过）
+- [ ] 前端 Vitest 单元测试基础设施 ❌（未配置）
+- [ ] Mock Server 可用 ❌（未实现）
+- [ ] OpenAPI → TS 自动生成链路 ❌（未实现）
 
 ---
 
@@ -1305,13 +1310,13 @@ M5 (W16): 生产就绪，性能/安全/监控完备
 | P2.22 | pipeline 路由 | status + stop | `route/pipeline.py` | P2.2 |
 
 **Phase 2 DoD**:
-- [ ] 可通过 API 创建案例并启动 Pipeline
-- [ ] SSE 事件流正常推送阶段变更
-- [ ] 人工审核门可暂停并恢复 Pipeline
-- [ ] 产物文件正确写入文件系统
-- [ ] 3 轮 Develop↔Review 迭代正常
-- [ ] 成本熔断器在超限时报错
-- [ ] 单元测试覆盖率 ≥ 70%
+- [x] 可通过 API 创建案例并启动 Pipeline ✅
+- [x] SSE 事件流正常推送阶段变更 ✅
+- [x] 人工审核门可暂停并恢复 Pipeline ✅
+- [x] 产物文件正确写入文件系统 ✅（ArtifactManager 实现完整）
+- [~] 3 轮 Develop↔Review 迭代正常 ⚠️（结构支持，但节点为占位符，无真实迭代）
+- [~] 成本熔断器在超限时报错 ⚠️（实现完整，但未被调用，无测试验证）
+- [ ] 单元测试覆盖率 ≥ 70% ❌（仅 16 个测试，大量模块无覆盖）
 
 ---
 
@@ -1360,12 +1365,12 @@ M5 (W16): 生产就绪，性能/安全/监控完备
 | P3.20 | E2E 测试 | 案例生命周期测试 | Playwright 测试 | P3.19 |
 
 **Phase 3 DoD**:
-- [ ] 可从前端创建案例并启动 Pipeline
-- [ ] Pipeline 可视化实时更新阶段状态
-- [ ] 人工审核面板在 pending 状态时正确显示
-- [ ] DiffViewer 正确渲染补丁和 findings 高亮
-- [ ] AgentEventLog 实时显示 Agent 执行过程
-- [ ] E2E 测试覆盖完整案例生命周期
+- [x] 可从前端创建案例并启动 Pipeline ✅
+- [x] Pipeline 可视化实时更新阶段状态 ✅
+- [x] 人工审核面板在 pending 状态时正确显示 ✅
+- [~] DiffViewer 正确渲染补丁和 findings 高亮 ⚠️（基础 diff 渲染完成，无 Monaco 集成，无 findings 高亮）
+- [ ] AgentEventLog 实时显示 Agent 执行过程 ❌（独立组件不存在）
+- [~] E2E 测试覆盖完整案例生命周期 ⚠️（Playwright 基础 E2E 通过，未覆盖完整 UI 生命周期）
 
 ---
 
@@ -1401,12 +1406,12 @@ M5 (W16): 生产就绪，性能/安全/监控完备
 | P4.12 | 数据备份恢复 | MongoDB/PostgreSQL 备份 | 脚本 + 测试 | 无 |
 
 **Phase 4 DoD**:
-- [ ] QEMU 沙箱可正确编译和运行 RISC-V 测试
-- [ ] checkpatch.pl 和 sparse 在 Review 阶段自动运行
-- [ ] API 速率限制生效
-- [ ] 故障恢复测试通过（服务重启后 Pipeline 可恢复）
-- [ ] 性能测试通过（50 并发 API, 100 SSE 连接）
-- [ ] 安全扫描无高危漏洞
+- [ ] QEMU 沙箱可正确编译和运行 RISC-V 测试 ❌（docker-compose 中为 sleep infinity 占位符）
+- [ ] checkpatch.pl 和 sparse 在 Review 阶段自动运行 ❌（review_node 为占位符）
+- [ ] API 速率限制生效 ❌（未实现）
+- [ ] 故障恢复测试通过（服务重启后 Pipeline 可恢复）❌（未测试）
+- [ ] 性能测试通过（50 并发 API, 100 SSE 连接）❌（未实现）
+- [ ] 安全扫描无高危漏洞 ❌（未执行）
 
 ---
 
@@ -1424,10 +1429,10 @@ M5 (W16): 生产就绪，性能/安全/监控完备
 | P5.6 | 团队培训 | 使用与运维培训 | 培训完成 |
 
 **Phase 5 DoD**:
-- [ ] 生产环境部署成功
-- [ ] 所有文档完备
-- [ ] 团队培训完成
-- [ ] 上线检查清单全部通过
+- [ ] 生产环境部署成功 ❌
+- [~] 所有文档完备 ⚠️（docs/ 目录存在但需人工核查完备性）
+- [ ] 团队培训完成 ❌
+- [ ] 上线检查清单全部通过 ❌
 
 ---
 
