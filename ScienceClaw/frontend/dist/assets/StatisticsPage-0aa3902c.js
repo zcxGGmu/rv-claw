@@ -1,0 +1,1 @@
+import{_ as e,c as a,b as s,o as c}from"./index-3c314783.js";const o={},n={class:"statistics-page"};function r(i,t){return c(),a("div",n,t[0]||(t[0]=[s("h1",null,"Statistics",-1),s("p",null,"统计页面 — 开发中",-1)]))}const _=e(o,[["render",r]]);export{_ as default};
