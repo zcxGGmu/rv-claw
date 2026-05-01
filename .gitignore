@@ -78,3 +78,10 @@ dist/
 
 # Workspace
 workspace/
+
+# Root-level package lock (managed in frontend/ subdir)
+/package-lock.json
+
+# Playwright test artifacts
+ScienceClaw/frontend/playwright-report/
+ScienceClaw/frontend/test-results/
